@@ -559,11 +559,23 @@ function placement_text(rank, teams) {
     return "小组出局";
 }
 
-// 单场地图数：小组赛与八强/半决赛为 Bo3，决赛为 Bo5；地区赛决赛同样是 Bo3。
-// 每张图累计一张地图的击杀、助攻、ADR 与 KAST，赛后按地图数求平均，口径与真实数据中心一致。
-function series_maps(rng, is_final, event) {
-    if (is_final) return event.final_bo === 5 ? (rng.random() < 0.55 ? 4 : 5) : (rng.random() < 0.65 ? 3 : 2);
-    return rng.random() < 0.70 ? 2 : 3;
+// 系列赛的图数上限＝**赛制本身**：小组赛与八强/半决赛为 Bo3（3 图），决赛按 final_bo 为 Bo5（5 图）
+// 或 Bo3（3 图，地区赛决赛）。
+// 注意这里给的是**上限**，不是「这一场会打几图」——实际打几图由比分决定：先到过半胜场就收
+// （2:0 只需 2 图，1:1 必然打第 3 图），所以偶数上限凑不出过半胜场的情况根本不会发生。
+// 历史上这里叫 series_maps 并按 70% / 55% 抽签决定 2 图或 4 图，被 simulate_series 当成封顶用，
+// 于是偶数封顶必然出平局，平局又被判给后手方 b（配对时 a 恒为种子更高的一方）＝系统性偏向弱队。
+function series_cap(is_final, event) {
+    return is_final && event.final_bo === 5 ? 5 : 3;
+}
+
+// 赛制切换线（领域文档 §4.2「凡『胜则晋级』或『负则淘汰』的比赛为 Bo3，其余比赛为 Bo1」）。
+// 锁线瑞士轮里只有 2 胜或 2 负的队伍站在赛制切换线上：赢下这一场就到 3 胜晋级、输掉这一场就到 3 负淘汰。
+// 同战绩配对保证一场里两队战绩相同，所以判一次就够，这里仍对双方各判一次以防将来改配对规则。
+// 于是 R1 / R2 全是 Bo1，R3 的 2-0 与 0-2 对局、R4 与 R5 的全部对局是 Bo3。
+function swiss_series_cap(event, entry_a, entry_b) {
+    const decisive = entry => entry.wins >= CLINCH_WINS - 1 || entry.losses >= CLINCH_LOSSES - 1;
+    return decisive(entry_a) || decisive(entry_b) ? series_cap(false, event) : 1;
 }
 
 // 单图表现系数：个人实力相对本队平均的差距 + 临场随机，再乘角色状态的修正。
@@ -636,6 +648,11 @@ function simulate_series(a, b, event, rng, buff, maps, detailed, sink = null) {
             }
         }
         if (lines) sink.push({winner, lines});
+    }
+    // 门槛＝过半图数，而上限又是奇数（Bo3 = 3、Bo5 = 5），因此必然有一方先到门槛：平局不可能出现。
+    // 一旦出现就说明有人又把「预定图数」塞进了 maps，直接炸掉而不是悄悄把胜利判给 b。
+    if (a_wins === b_wins) {
+        throw new Error(`${event.key} 的系列赛出现平局 ${a_wins}:${b_wins}（maps=${maps}）`);
     }
     for (const team of [a, b]) {
         const win = team === a ? a_wins > b_wins : b_wins > a_wins;
@@ -729,7 +746,7 @@ function play_bracket_round(current, event, rng, buff, detailed) {
     for (let i = 0; i + 1 < current.length; i += 2) {
         const a = current[i];
         const b = current[i + 1];
-        const result = play_series(a, b, event, rng, buff, series_maps(rng, is_final, event), detailed,
+        const result = play_series(a, b, event, rng, buff, series_cap(is_final, event), detailed,
             {kind: "bracket", size: current.length});
         const loser = result.winner === a ? b : a;
         eliminated.set(loser, loser_rank);
@@ -764,9 +781,10 @@ function played_before(used, a, b) {
     return Boolean(used.get(a) && used.get(a).has(b));
 }
 
-// 瑞士轮拆成可逐轮推进的状态机：make_swiss 建表，swiss_round 打一轮，swiss_result 取前 8。
-// 世界模拟用 play_swiss 一次性跑完；玩家参赛时按轮逐日推进（见 player_event_stages）。
+// 固定轮数瑞士轮（地区赛专用：30 队 4 轮取前 8，不设锁线，打满轮数后按战绩排序取前 8）。
+// 拆成可逐轮推进的状态机：make_swiss 建表，swiss_round 打一轮，swiss_result 取前 8。
 // 配对规则：先按引用期排名蛇形配对，之后按同战绩配对并避免重复对阵；单数队伍时轮空位置逐轮轮换。
+// Major / S 级不用这套，走上面的三阶段锁线阶梯（make_ladder / ladder_round）。
 function make_swiss(teams) {
     return {
         table: teams.map(team => ({team, wins: 0, losses: 0, opponents: []})),
@@ -795,7 +813,7 @@ function swiss_round(state, event, rng, buff, detailed) {
         }
         const b = pool[i + 1];
         mark_played(used, a.team, b.team);
-        const result = play_series(a.team, b.team, event, rng, buff, series_maps(rng, false, event), detailed,
+        const result = play_series(a.team, b.team, event, rng, buff, series_cap(false, event), detailed,
             {kind: "swiss", round});
         const winner = result.winner === a.team ? a : b;
         const loser = winner === a ? b : a;
@@ -829,6 +847,158 @@ function buchholz(entry) {
     return entry.opponents.reduce((sum, opponent) => sum + opponent.wins, 0);
 }
 
+/* ==========================================================================
+ * Major / S 级：三阶段阶梯瑞士轮（领域文档「三组阶梯式瑞士轮，每组 16 队取 8」）
+ * --------------------------------------------------------------------------
+ * 32 队按引用期名次分成三段：传奇组直邀 8（1–8 名）、挑战组直邀 8（9–16 名）、
+ * 竞争组 16（17–28 名 + 4 支赛区预选冠军）。竞争组先打，出线 8 队并入挑战组；
+ * 挑战组出线 8 队并入传奇组；传奇组出线 8 队进入 8 强单败淘汰赛。
+ * 每个阶段都是 16 队瑞士轮，沿用真实 Major 的锁线规则：**先取 3 胜者晋级、先吞 3 负者淘汰**。
+ * 由此每个阶段恰好 8 队 3 胜、8 队 3 负——「3 胜」永远是晋级的充分条件。
+ * 对照旧实现：把 32 队塞进一锅 5 轮瑞士轮再取前 8，同战绩配对会天然产出 16 支 ≥3 胜的队伍，
+ * 于是每站都有约 8 支 3 胜 2 负的队伍被挡在八强之外（实测占全部 3-2 球队的 79.7%）。
+ * ========================================================================== */
+const LADDER_STAGES = ["竞争组", "挑战组", "传奇组"];
+const CLINCH_WINS = 3;    // 锁线胜场：先取 3 胜者晋级
+const CLINCH_LOSSES = 3;  // 锁线负场：先吞 3 负者淘汰
+const LADDER_POT = 16;    // 每个阶段的队伍数
+
+// 战绩排序：胜场多 → 负场少 → Buchholz（对手胜场和）高 → 引用期排名靠前。
+function record_order(a, b) {
+    return b.wins - a.wins || a.losses - b.losses
+        || buchholz(a) - buchholz(b) || rank_of(a.team) - rank_of(b.team);
+}
+
+// 锁线瑞士轮：与 make_swiss 同形，区别是队伍拿到 3 胜或吞到 3 负后 resolved=true，不再参与配对。
+function make_clinch_swiss(teams) {
+    return {
+        table: teams.map(team => ({team, wins: 0, losses: 0, opponents: [], resolved: false})),
+        used: new Map(),
+        round: 0,
+    };
+}
+
+// 阶梯瑞士轮状态机：按引用期名次切出三段名单，从竞争组开始逐阶段推进。
+function make_ladder(teams) {
+    const seeds = teams.slice().sort((a, b) => rank_of(a) - rank_of(b));
+    const split = seeds.length - LADDER_POT;
+    return {
+        seeds,
+        legend: seeds.slice(0, 8),        // 传奇组直邀：引用期 1–8 名
+        challenger: seeds.slice(8, split),  // 挑战组直邀：引用期 9–16 名
+        competitor: seeds.slice(split),     // 竞争组：余下 16 队（17–28 名 + 4 支预选）
+        stage: 0,
+        swiss: make_clinch_swiss(seeds.slice(split)),
+        results: [],                      // 每阶段的 {name, advancing, rest}（都是战绩条目）
+        done: false,
+        advancing: null,                  // 阶梯跑完后的 8 强（队伍）
+        rest: null,                       // 阶梯跑完后的 9～32 名（战绩条目，按出局阶段倒序）
+    };
+}
+
+// 未锁线队伍的对阵顺序：第 1 轮按引用期排名蛇形落位（1 对 16、2 对 15……），
+// 也就是「直邀队 vs 前一阶段晋级队」；之后按战绩排序，同战绩相邻配对。
+function clinch_pool(state) {
+    const pool = state.table.filter(entry => !entry.resolved);
+    if (state.round === 0) {
+        pool.sort((a, b) => rank_of(a.team) - rank_of(b.team));
+        const half = pool.length / 2;
+        return pool.slice(0, half).flatMap((entry, i) => [entry, pool[pool.length - 1 - i]]);
+    }
+    return pool.sort(record_order);
+}
+
+// 打一轮锁线瑞士轮：只把未锁线的队伍按 clinch_pool 的顺序两两配对，打完给达到 3 胜 / 3 负的队伍上锁。
+// 撞上打过的对手时只在**同战绩**的剩余队伍里换人：跨战绩换人会打破「每档偶数」，
+// 让某个阶段凑不出 8 胜 8 负；实在躲不开就接受重复对阵。
+// 返回本轮对阵记录；对局数恒为「未锁线队伍数 / 2」，因此 16 队阶段恰好是 8 + 8 + 8 + 6 + 3 = 33 场。
+function clinch_round(state, event, rng, buff, detailed, stage_name) {
+    const pool = clinch_pool(state);
+    if (pool.length % 2 === 1) {
+        throw new Error(`${event.key} 的${stage_name}瑞士轮凑不出偶数对阵：${pool.length} 支未锁线队伍`);
+    }
+    const matches = [];
+    for (let i = 0; i + 1 < pool.length; i += 2) {
+        const a = pool[i];
+        if (played_before(state.used, a.team, pool[i + 1].team)) {
+            const same_record = entry => entry.wins === pool[i + 1].wins;
+            const swap = pool.findIndex((entry, k) =>
+                k > i + 1 && same_record(entry) && !played_before(state.used, a.team, entry.team));
+            if (swap > 0) [pool[i + 1], pool[swap]] = [pool[swap], pool[i + 1]];
+        }
+        const b = pool[i + 1];
+        mark_played(state.used, a.team, b.team);
+        // 赛制切换线：决胜场 Bo3，其余 Bo1（见 swiss_series_cap）。
+        const result = play_series(a.team, b.team, event, rng, buff, swiss_series_cap(event, a, b), detailed,
+            {kind: "swiss", round: state.round, stage: stage_name});
+        const winner = result.winner === a.team ? a : b;
+        const loser = winner === a ? b : a;
+        winner.wins += 1;
+        loser.losses += 1;
+        winner.opponents.push(loser);
+        loser.opponents.push(winner);
+        matches.push({a: a.team, b: b.team, winner: result.winner, a_wins: result.a_wins, b_wins: result.b_wins});
+    }
+    for (const entry of state.table) {
+        if (!entry.resolved && (entry.wins >= CLINCH_WINS || entry.losses >= CLINCH_LOSSES)) entry.resolved = true;
+    }
+    state.round += 1;
+    return matches;
+}
+
+// 一个阶段结束：8 队 3 胜晋级、8 队 3 负淘汰。这两条是锁线规则的不变量，
+// 凑不出 8/8 就说明赛制实现破了「3 胜必晋级」，必须当场炸掉而不是悄悄算出一个名次。
+function clinch_result(state, event, stage_name) {
+    const sorted = state.table.slice().sort(record_order);
+    const advancing = sorted.filter(entry => entry.wins >= CLINCH_WINS);
+    const rest = sorted.filter(entry => entry.wins < CLINCH_WINS);
+    if (advancing.length !== 8 || rest.length !== 8) {
+        throw new Error(`${event.key} 的${stage_name}瑞士轮没有产出 8 胜 8 负：${advancing.length}/${rest.length}`);
+    }
+    return {advancing, rest};
+}
+
+// 推进阶梯瑞士轮一轮。阶段结束后把出线 8 队并入下一阶段的直邀名单（或收束到八强）。
+// 返回 {matches, stage_name, stage_finished, stage_advancing, finished}。
+function ladder_round(state, event, rng, buff, detailed) {
+    const name = LADDER_STAGES[state.stage];
+    const matches = clinch_round(state.swiss, event, rng, buff, detailed, name);
+    const stage_finished = state.swiss.table.every(entry => entry.resolved);
+    const out = {matches, stage_name: name, stage_finished, stage_advancing: [], finished: false};
+    if (!stage_finished) return out;
+    const {advancing, rest} = clinch_result(state.swiss, event, name);
+    state.results.push({name, advancing, rest});
+    out.stage_advancing = advancing.map(entry => entry.team);
+    if (state.stage < LADDER_STAGES.length - 1) {
+        const invited = state.stage === 0 ? state.challenger : state.legend;
+        state.stage += 1;
+        state.swiss = make_clinch_swiss(invited.concat(out.stage_advancing));
+        return out;
+    }
+    // 传奇组出线 8 队进八强；淘汰队按「后出局的排前面」拼成 9～32 名的完整名次表。
+    state.done = true;
+    state.advancing = out.stage_advancing;
+    state.rest = state.results.slice().reverse().flatMap(item => item.rest);
+    out.finished = true;
+    return out;
+}
+
+// 把阶梯一次跑完（世界模拟与「玩家已出局」时的补完共用）。
+function drain_ladder(ladder, event, rng, buff, detailed) {
+    let guard = 0;
+    while (!ladder.done) {
+        ladder_round(ladder, event, rng, buff, detailed);
+        if (++guard > LADDER_STAGES.length * 8) throw new Error(`${event.key} 的阶梯瑞士轮没有收敛`);
+    }
+    return ladder;
+}
+
+// 世界模拟（NPC 赛事）：一次性跑完整个阶梯。返回 {advancing, rest}，与 play_swiss 同形。
+function play_ladder(teams, event, rng, buff, detailed) {
+    const ladder = drain_ladder(make_ladder(teams), event, rng, buff, detailed);
+    return {advancing: ladder.advancing, rest: ladder.rest};
+}
+
 // 分组抽签：按引用期名次蛇形落位（1–8 / 9–16 / 17–24 / 25–32 各成一档），保证每组实力均衡。
 // 队伍数与组数除不尽时把余数分给前面的组，因此 25 队也能分成 7/6/6/6 这样的规模。
 function make_groups(teams, group_count, rng) {
@@ -846,7 +1016,7 @@ function group_order(group, event, rng, buff, detailed) {
         for (let j = i + 1; j < table.length; j++) {
             const a = table[i];
             const b = table[j];
-            const maps = series_maps(rng, false, event);
+            const maps = series_cap(false, event);
             const result = play_series(a.team, b.team, event, rng, buff, maps, detailed, {kind: "group"});
             const winner = result.winner === a.team ? a : b;
             const loser = winner === a ? b : a;
@@ -885,30 +1055,37 @@ function play_groups(groups, event, rng, buff, detailed) {
 }
 
 // 一站赛事的完整模拟。按赛事模板决定赛制与参赛队伍：
-//   major    —— 32 队 5 轮瑞士轮取 8 强，八强/半决赛 Bo3、决赛 Bo5（Major 与 S 级）；
+//   major    —— 32 队三阶段阶梯瑞士轮（竞争组 / 挑战组 / 传奇组，各 16 队取 8），8 强单败，决赛 Bo5；
 //   standard —— 32 队 4 组 × 8 队单循环取前二，8 强单败（A 级与 B 级）；
 //   regional —— 30 队 4 轮瑞士轮取 8 强（同期地区赛）。
 // 所有赛制最后都收敛到同一个 8 强单败淘汰赛，保证 1～8 名的名次口径完全一致。
 // 返回 {event, teams, standings, field, champion, runner_up}。
 function run_tournament(teams, event, rng, buff = new Map(), detailed = true) {
     const field = event_field(teams, event);
-    // 瑞士轮制（Major / S 级 / 地区赛）先跑瑞士轮，其余（A / B 级）先跑小组单循环。
-    const stage = (event.format === "major" || event.format === "regional")
-        ? play_swiss(teams, event, rng, buff, detailed)
-        : play_groups(make_groups(teams, event.groups, rng), event, rng, buff, detailed);
+    // Major / S 级走阶梯瑞士轮；地区赛走固定轮数瑞士轮；A / B 级先跑小组单循环。
+    const stage = event.format === "major"
+        ? play_ladder(teams, event, rng, buff, detailed)
+        : event.format === "regional"
+            ? play_swiss(teams, event, rng, buff, detailed)
+            : play_groups(make_groups(teams, event.groups, rng), event, rng, buff, detailed);
     const bracket = play_bracket(stage.advancing, event, rng, buff, detailed);
     return finalize_event(event, teams, field, bracket, stage.rest, rng);
 }
 
-// 一场赛事结束后的收尾：先按淘汰赛名次排定 1～8 名，再按小组/瑞士轮战绩补齐其余队伍，
+// 一场赛事结束后的收尾：先按淘汰赛名次排定 1～8 名，再按小组/瑞士轮/阶梯的战绩补齐其余队伍，
 // 最后给每名选手结算年度表现。返回赛事总结对象（champion / runner_up 供播报使用）。
 function finalize_event(event, teams, field, bracket, rest, rng) {
     const ordered = bracket ? Array.from(bracket.keys()) : [];
     const standings = ordered.slice().sort((a, b) => bracket.get(a) - bracket.get(b)
         || b.tour_wins - a.tour_wins || a.tour_losses - b.tour_losses || rank_of(a) - rank_of(b));
-    // 淘汰赛名次（1～8）由 play_bracket 给出；其余队伍按「胜场多、负场少、引用期名次靠前」补齐。
-    const others = teams.filter(team => !bracket || !bracket.has(team))
-        .sort((a, b) => b.tour_wins - a.tour_wins || a.tour_losses - b.tour_losses || rank_of(a) - rank_of(b));
+    // 淘汰赛名次（1～8）由 play_bracket 给出；其余队伍优先采用赛制给出的顺序。
+    // 阶梯瑞士轮必须沿用「出局阶段」的顺序（传奇组出局排 9～16、挑战组 17～24、竞争组 25～32），
+    // 单纯按总胜场排会把「在最后一个阶段打得更久」误判成更好。赛制没给出顺序时退回按战绩排。
+    const listed = (rest || []).map(entry => (entry && entry.team) || entry);
+    const covered = new Set(listed);
+    const others = listed.filter(team => !bracket || !bracket.has(team));
+    others.push(...teams.filter(team => !covered.has(team) && (!bracket || !bracket.has(team)))
+        .sort((a, b) => b.tour_wins - a.tour_wins || a.tour_losses - b.tour_losses || rank_of(a) - rank_of(b)));
     standings.push(...others);
     assert_unique(standings, teams.length, event);
     standings.forEach((team, index) => {
@@ -919,7 +1096,6 @@ function finalize_event(event, teams, field, bracket, rest, rng) {
             record_performance(player, result, event, rng, field, rating);
         }
     });
-    void rest;
     return {event, teams, standings, field, champion: standings[0], runner_up: standings[1] || null};
 }
 
@@ -1061,10 +1237,12 @@ function swing_of(rating) {
     return (rating - 1.00) * 6.5;
 }
 
-// 阶段标签：把 play_series 采集到的 stage 变成「瑞士轮 第 3 轮 / 半决赛」这类可读文字。
+// 阶段标签：把 play_series 采集到的 stage 变成「竞争组 第 3 轮 / 半决赛」这类可读文字。
 function stage_label(stage) {
     if (!stage) return "比赛";
-    if (stage.kind === "swiss") return `瑞士轮 第 ${stage.round + 1} 轮`;
+    if (stage.kind === "swiss") {
+        return stage.stage ? `${stage.stage} 第 ${stage.round + 1} 轮` : `瑞士轮 第 ${stage.round + 1} 轮`;
+    }
     if (stage.kind === "group") return "小组赛";
     if (stage.kind === "bracket") return round_name(stage.size);
     return "比赛";
@@ -1616,16 +1794,20 @@ function world_station(world, event, rng, exclude) {
     return run_tournament(world_participants(world, event, exclude), event, rng, new Map());
 }
 
-// —— 玩家参赛赛事：分阶段模拟（小组赛/瑞士轮逐日推进，淘汰赛逐日逐轮）—— //
+// —— 玩家参赛赛事：分阶段模拟（阶梯瑞士轮/小组赛逐日推进，淘汰赛逐日逐轮）—— //
 // 阶段排期：
-//   major（Major/S 级）—— 瑞士轮 5 轮铺在赛事前 5 天，8 强淘汰赛 3 轮压在末段（决赛落收官日周日）；
+//   major（Major/S 级）—— 三阶段阶梯瑞士轮，每阶段 5 轮，按真实 Major 的「一天两轮」压在赛事前 9 天
+//     （R1–R2 / R3–R4 / R5 各占一天，三个阶段依次排开），8 强淘汰赛 3 轮压在末段（决赛落收官日周日）；
 //   其余赛制 —— 小组赛/瑞士轮一次跑完安排在开赛日，淘汰赛同样压在末段。
-// 更贴近真实 Major 的「前几天打完组别、末段打淘汰赛」排期。
 function player_event_stages(event) {
     const stages = [];
     if (event.format === "major") {
-        const rounds = event.swiss_rounds || 5;
-        for (let r = 0; r < rounds; r++) stages.push({kind: "swiss", day: event.start_day + r, round: r});
+        // 锁线规则保证 16 队必然在 5 轮内全部决出 3 胜 / 3 负，因此每阶段固定 5 轮、一天两轮。
+        for (let s = 0; s < LADDER_STAGES.length; s++) {
+            for (let r = 0; r < 5; r++) {
+                stages.push({kind: "swiss", stage: s, round: r, day: event.start_day + s * 3 + (r >> 1)});
+            }
+        }
     } else {
         stages.push({kind: "group", day: event.start_day});
     }
@@ -1633,7 +1815,7 @@ function player_event_stages(event) {
     return stages;
 }
 
-// 玩家参赛时建站：清空本站战绩、排好参赛名单与阶段表。小组赛/瑞士轮在 step_player_event 里推进。
+// 玩家参赛时建站：清空本站战绩、排好参赛名单与阶段表。小组赛/阶梯瑞士轮在 step_player_event 里推进。
 function start_player_event(world, event, human) {
     const teams = event_participants(world, event, human, true);
     for (const team of teams) {
@@ -1645,30 +1827,63 @@ function start_player_event(world, event, human) {
     return {
         event, teams, field: event_field(teams, event), bracket: new Map(),
         alive: null, rest: null, stages: player_event_stages(event), stageIdx: 0,
-        swiss: event.format === "major" ? make_swiss(teams) : null,
+        ladder: event.format === "major" ? make_ladder(teams) : null,
     };
 }
 
-// 推进一个阶段：swiss 打一轮瑞士轮，group 跑完小组赛/瑞士轮，round 打一轮淘汰赛。
-function step_player_event(state, kind, rng, buff) {
-    const {event, teams} = state;
-    if (kind === "swiss") {
-        const matches = swiss_round(state.swiss, event, rng, buff, true);
-        const done = state.swiss.round >= (event.swiss_rounds || 5);
-        if (done) {
-            const stage = swiss_result(state.swiss);
-            state.alive = stage.advancing;
-            state.rest = stage.rest;
-        }
-        return {kind: "swiss", matches, done};
+// 玩家在阶梯里的入口阶段：按直邀名次决定从哪一组打起。
+function ladder_entry_stage(ladder, team) {
+    if (ladder.competitor.includes(team)) return 0;
+    if (ladder.challenger.includes(team)) return 1;
+    return 2;
+}
+
+// 推进阶梯瑞士轮一轮；阶段结束就把 8 支出线队并入下一阶段，最后一阶段出线者进八强。
+// slot 是 player_event_stages 排好的 {stage, round} 轮次条目。
+function step_ladder(state, slot, human, rng, buff) {
+    const ladder = state.ladder;
+    const entry = ladder_entry_stage(ladder, human.team);
+    const out = {
+        kind: "swiss", matches: [], stage_name: LADDER_STAGES[slot.stage],
+        stage_advancing: [], stage_finished: false, finished: false, waiting: null,
+        next_stage: LADDER_STAGES[slot.stage + 1] || null,
+        entry_stage: entry,
+        // 玩家的阶段是否已经开始：直邀挑战组/传奇组的队伍在前面的阶段只是旁观，不能算「止步」。
+        player_in_stage: entry <= slot.stage,
+        player_out: false,
+    };
+    // 阶段已经结束（每阶段固定 5 轮，这里是防御性兜底）：该轮次空过，世界不推进。
+    if (ladder.done || slot.stage < ladder.stage) return out;
+    if (slot.round === 0 && entry > slot.stage) {
+        // 直邀队在自己的阶段开打前只做等待播报，世界照常推进。
+        out.waiting = `${LADDER_STAGES[entry]}直邀：等待${LADDER_STAGES[slot.stage]}结果`;
     }
-    if (kind === "group") {
-        const stage = (event.format === "regional")
+    const info = ladder_round(ladder, state.event, rng, buff, true);
+    out.matches = info.matches;
+    out.stage_name = info.stage_name;
+    out.stage_finished = info.stage_finished;
+    out.stage_advancing = info.stage_advancing;
+    out.finished = info.finished;
+    out.player_out = info.stage_finished && out.player_in_stage
+        && !out.stage_advancing.includes(human.team);
+    if (info.finished) {
+        state.alive = ladder.advancing;
+        state.rest = ladder.rest;
+    }
+    return out;
+}
+
+// 推进一个阶段：swiss 打一轮阶梯瑞士轮，group 跑完小组赛/瑞士轮，round 打一轮淘汰赛。
+function step_player_event(state, stage, human, rng, buff) {
+    const {event, teams} = state;
+    if (stage.kind === "swiss") return step_ladder(state, stage, human, rng, buff);
+    if (stage.kind === "group") {
+        const result = (event.format === "regional")
             ? play_swiss(teams, event, rng, buff, true)
             : play_groups(make_groups(teams, event.groups, rng), event, rng, buff, true);
-        state.alive = stage.advancing;
-        state.rest = stage.rest;
-        return {kind: "group", advancing: stage.advancing};
+        state.alive = result.advancing;
+        state.rest = result.rest;
+        return {kind: "group", advancing: result.advancing};
     }
     const size = state.alive.length;
     const {next, eliminated, matches} = play_bracket_round(state.alive, event, rng, buff, true);
@@ -1678,8 +1893,17 @@ function step_player_event(state, kind, rng, buff) {
     return {kind: "round", size, eliminated, matches, alive: state.alive};
 }
 
-// 玩家已出局或赛事已打完：把剩余淘汰赛一次跑完，交给 finalize_event 结算。
+// 玩家已出局或赛事已打完：把剩余阶段与淘汰赛一次跑完，交给 finalize_event 结算。
 function finish_player_event(state, rng, buff) {
+    if (state.ladder) {
+        drain_ladder(state.ladder, state.event, rng, buff, true);
+        // 只有还没进淘汰赛（阶梯刚跑完）时才从阶梯结果起手。已经打过淘汰赛就不能重置对阵表，
+        // 否则会把四分之一决赛重打一遍，输过的队伍又能复活。
+        if (!state.alive) {
+            state.alive = state.ladder.advancing;
+            state.rest = state.ladder.rest;
+        }
+    }
     while (state.alive && state.alive.length > 1) {
         const {next, eliminated} = play_bracket_round(state.alive, state.event, rng, buff, true);
         for (const [team, rank] of eliminated) state.bracket.set(team, rank);
@@ -1689,8 +1913,8 @@ function finish_player_event(state, rng, buff) {
     return finalize_event(state.event, state.teams, state.field, state.bracket, state.rest, rng);
 }
 
-// 小组赛/瑞士轮名次：前 8 名就是晋级顺序，其余按战绩表排在 8 名之后。
-// rest 里装的是带 .team 的战绩条目（瑞士轮与小组赛都一样），所以两种形态都要认。
+// 小组赛/阶梯瑞士轮名次：前 8 名就是晋级顺序，其余按战绩表排在 8 名之后。
+// rest 里装的是带 .team 的战绩条目（阶梯瑞士轮、瑞士轮与小组赛都一样），所以两种形态都要认。
 function group_rank(state, team) {
     const index = state.alive.indexOf(team);
     if (index >= 0) return index + 1;
@@ -1792,9 +2016,13 @@ async function play_human_year(human, rng, auto, io) {
             }
         }
 
-        // —— 玩家赛事的阶段日：瑞士轮/小组赛逐日推进，淘汰赛逐日一轮 —— //
-        const stage = active && active.stages[active.stageIdx];
-        if (stage && stage.day === day) {
+        // —— 玩家赛事的阶段日：阶梯瑞士轮/小组赛逐日推进（阶梯一天两轮），淘汰赛逐日一轮 —— //
+        // 同一天可能排了两个轮次，因此把当天的阶段条目逐个消费完。
+        let acted = false;
+        while (active) {
+            const stage = active.stages[active.stageIdx];
+            if (!stage || stage.day !== day) break;
+            acted = true;
             active.stageIdx += 1;
             commit_idle();
             // 比赛时按阶段刷新角色状态，状态影响本阶段的个人表现与球队实力。
@@ -1802,29 +2030,41 @@ async function play_human_year(human, rng, auto, io) {
             const rating_before = human.team.shown_rating;
             let summary = null;
             if (stage.kind === "swiss") {
-                // 瑞士轮逐日推进：每轮输出玩家本场，最后一轮输出最终排名与晋级结果。
-                const {matches, done} = step_player_event(active, "swiss", rng, active_buff);
-                const match = matches.find(item => item.a === human.team || item.b === human.team);
+                // 三阶段阶梯瑞士轮（Major / S 级）：每轮输出玩家本场，阶段结束播报出线名单。
+                const info = step_player_event(active, stage, human, rng, active_buff);
+                const match = info.matches.find(item => item.a === human.team || item.b === human.team);
+                const line = text => write_line(day, "  " + c(date_label(date), BOLD) + "  " +
+                    c(active.event.name, CYAN) + "   " + text);
                 if (match) {
                     const opponent = match.a === human.team ? match.b : match.a;
-                    const won = match.winner === human.team;
-                    const score = match.a === human.team ? `${match.a_wins}:${match.b_wins}` : `${match.b_wins}:${match.a_wins}`;
-                    write_line(day, "  " + c(date_label(date), BOLD) + "  " + c(active.event.name, CYAN) +
-                        `   瑞士轮第 ${stage.round + 1} 轮：${c(human.team.name, CYAN)} ` +
-                        (won ? c(`战胜 ${opponent.name}`, GREEN) : c(`负于 ${opponent.name}`, RED)) + c(`  (${score})`, DIM));
+                    const score = match.a === human.team
+                        ? `${match.a_wins}:${match.b_wins}` : `${match.b_wins}:${match.a_wins}`;
+                    line(`${info.stage_name} 第 ${stage.round + 1} 轮：${c(human.team.name, CYAN)} ` +
+                        (match.winner === human.team
+                            ? c(`战胜 ${opponent.name}`, GREEN) : c(`负于 ${opponent.name}`, RED)) +
+                        c(`  (${score})`, DIM));
+                } else if (info.waiting) {
+                    // 直邀队还没轮到自己打的阶段，只播报等待。
+                    line(c(info.waiting, DIM));
                 }
-                if (done) {
-                    const size = active.teams.length;
-                    const rank = group_rank(active, human.team);
-                    const advanced = rank !== null && rank <= 8;
-                    write_line(day, "  " + c(date_label(date), BOLD) + "  " + c(active.event.name, CYAN) +
-                        `   瑞士轮结束：你所在的 ${c(human.team.name, CYAN)} 位列第 ${rank}/${size}，` +
-                        (advanced ? c("晋级八强", GREEN) : c("无缘淘汰赛", RED)));
-                    if (!advanced) summary = finish_player_event(active, rng, active_buff);
+                if (info.stage_finished) {
+                    line(`${info.stage_name}结束：8 队晋级${info.next_stage ? ` ${info.next_stage}` : "八强"}` +
+                        (info.player_in_stage && info.stage_advancing.includes(human.team)
+                            ? c("，你在列", GREEN) : ""));
+                }
+                if (info.player_out) {
+                    // 玩家本阶段止步：剩余阶段与淘汰赛由世界补完，直接结算本站。
+                    summary = finish_player_event(active, rng, active_buff);
+                    const rank = summary.standings.indexOf(human.team) + 1;
+                    line(`阶梯瑞士轮结束：你所在的 ${c(human.team.name, CYAN)} 位列第 ` +
+                        `${rank}/${active.teams.length}，` + c("无缘淘汰赛", RED));
+                } else if (info.finished) {
+                    line(`阶梯瑞士轮结束：你所在的 ${c(human.team.name, CYAN)} 位列第 ` +
+                        `${group_rank(active, human.team)}/${active.teams.length}，` + c("晋级八强", GREEN));
                 }
             } else if (stage.kind === "group") {
                 const size = active.teams.length;
-                step_player_event(active, "group", rng, active_buff);
+                step_player_event(active, stage, human, rng, active_buff);
                 const rank = group_rank(active, human.team);
                 const advanced = rank !== null && rank <= 8;
                 const stage_name = active.event.format === "regional" ? "瑞士轮" : "小组赛";
@@ -1833,7 +2073,7 @@ async function play_human_year(human, rng, auto, io) {
                     (advanced ? c("晋级八强", GREEN) : c("无缘淘汰赛", RED)));
                 if (!advanced) summary = finish_player_event(active, rng, active_buff);
             } else {
-                const {size, matches} = step_player_event(active, "round", rng, active_buff);
+                const {size, matches} = step_player_event(active, stage, human, rng, active_buff);
                 const match = matches.find(item => item.a === human.team || item.b === human.team);
                 if (match) {
                     const opponent = match.a === human.team ? match.b : match.a;
@@ -1853,10 +2093,9 @@ async function play_human_year(human, rng, auto, io) {
                 active = null;
                 push_status(io, human, {day, next: next_match(day)});
             }
-            continue;
         }
-        // 赛事进行中（非阶段日）：不产出每日行，也不暂停。
-        if (active) continue;
+        // 阶段日与赛事进行中的日子都不再走空闲/事件分支。
+        if (acted || active) continue;
 
         // —— 空闲日：按周合并累计；每周第 7 天触发一个随机事件，随后暂停等玩家点继续 —— //
         if (!idle) idle = {from: day, to: day};

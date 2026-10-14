@@ -313,11 +313,13 @@ const GRADE_CFG = {
 
 // 赛制模板：队伍规模、分组/轮次与决赛地图数（八强/半决赛一律 Bo3，逐场由 game.js 模拟）。
 // 赛制按级别归为三套，全部收敛到同一个 8 强单败淘汰赛：
-//   major    —— Major 与 S 级：32 队 5 轮瑞士轮取 8 强，决赛 Bo5，沿用真实 Major 的「组别 + 淘汰赛晋级」；
+//   major    —— Major 与 S 级：32 队按引用期名次分三段，走三阶段阶梯瑞士轮
+//               （竞争组 16 → 挑战组 16 → 传奇组 16，每阶段先取 3 胜者晋级、先吞 3 负者淘汰，
+//                恰好 8 队出线），最终 8 强单败，决赛 Bo5。rounds 是**每个阶段**的轮数；
 //   standard —— A 级与 B 级：32 队 4 组 × 8 队单循环取前二（per_group 2），决赛 Bo5；
-//   regional —— 地区赛：30 队 4 轮瑞士轮取 8 强，决赛 Bo3。
+//   regional —— 地区赛：30 队 4 轮瑞士轮取 8 强（不设锁线），决赛 Bo3。
 const FORMATS = {
-    "major":    {teams: 32, rounds: 5, final_bo: 5},
+    "major":    {teams: 32, rounds: 5, stages: 3, final_bo: 5},
     "standard": {teams: 32, groups: 4, per_group: 2, final_bo: 5},
     "regional": {teams: 30, rounds: 4, final_bo: 3},
 };
@@ -427,7 +429,9 @@ function build_annual_calendar() {
             flagship: Boolean(item.flagship), region: item.region,
             start_day: item.start_day, end_day: item.end_day,
             draw: item.draw, qual_draw: item.qual_draw,
+            // swiss_rounds 是瑞士轮的轮数：阶梯赛制（major）是每阶段轮数，固定轮数赛制（regional）是总轮数。
             groups: format.groups, per_group: format.per_group, swiss_rounds: format.rounds,
+            ladder_stages: format.stages,
             field_offset: cfg.field_offset, form: cfg.form, worth: cfg.worth,
             final_bo: format.final_bo,
         });

@@ -25,12 +25,14 @@
     --warn:#D97706;
     --warn-soft:#FFFBEB;
     --neg:#DC2626;
+    --neg-soft:#FEF2F2;
     --violet:#7C3AED;
     --violet-soft:#F5F3FF;
 
-    --r-xs:6px; --r-sm:9px; --r-md:12px; --r-lg:16px; --r-xl:22px; --r-pill:999px;
+    /* 圆角与阴影刻度。注意只保留**实际用到**的档位：设计稿（*-mockup.html）自带一份完整刻度，
+       但这个样式表里没有用到 --r-xs 与 --sh-2，留着只会让人以为它们生效。 */
+    --r-sm:9px; --r-md:12px; --r-lg:16px; --r-xl:22px; --r-pill:999px;
     --sh-1:0 1px 2px rgba(16,24,40,.04);
-    --sh-2:0 2px 8px rgba(16,24,40,.06);
     --sh-3:0 8px 24px rgba(16,24,40,.08);
     --sh-4:0 24px 64px rgba(16,24,40,.18);
 
@@ -156,7 +158,9 @@ body{
 /* 本赛季数据行 */
 .season-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3.5px 0}
 .season-row > span:first-child{color:var(--ink-3)}
-.season-row b{color:var(--accent-d);font-variant-numeric:tabular-nums}
+/* 值是 span.sc（app.js:205 产出）；b 是设计稿里的旧写法，一并保留以防回到 b 标签 */
+.season-row .sc,
+.season-row b{color:var(--accent-d);font-weight:700;font-variant-numeric:tabular-nums}
 .season-row .up{color:var(--pos);font-weight:600}
 
 /* ============================================================
@@ -317,6 +321,12 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-co
 .log-item.k-idle .lines{color:var(--ink-3)}
 .log-item.k-year{border-top:none;padding:14px 2px 8px}
 .log-item.k-year .lines{color:var(--ink);font-weight:700;font-size:13px}
+/* 赛事行：设计稿里是浅底（main-mockup.html 的 .log-item.k-match{background:var(--surface-2)}），
+   此前漏了这条规则，赛事行与事件行只能靠行内颜色区分。 */
+.log-item.k-match{background:var(--surface-2)}
+/* 事件行**故意**不加规则：橙色高亮由行内标记完成——标题走 .text-yellow（= var(--warn)）、
+   说明走 .text-dim，收益行由 text.js 上绿色。若将来要改成设计稿那样的琥珀色底块，
+   再加 .log-item.k-event{background:var(--warn-soft);border:1px solid #FDE68A} 即可。 */
 
 /* ---------- 事件 / 选择卡 ---------- */
 /* 开局阶段（选位置）在文档流里，跟着开局表单自然排布 */
@@ -600,7 +610,6 @@ body.in-game #choices-panel.plain{box-shadow:0 10px 30px rgba(16,24,40,.14)}
 }
 .timeline td:first-child,.timeline td:nth-child(2),.timeline td:nth-child(3){text-align:left;font-family:var(--sans);color:var(--ink)}
 .timeline td.team{font-weight:600;color:var(--accent-d)}
-.timeline td .star{color:var(--warn)}
 .timeline tr.hot td{background:var(--warn-soft)}
 
 /* 荣誉室：冠军 ★ 与赛事 MVP ◆ 区分展示 */

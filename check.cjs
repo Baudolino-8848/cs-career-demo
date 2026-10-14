@@ -12,8 +12,10 @@ const game = vm.runInNewContext(source + `\n({
     event_field, eligible_tournaments, event_allows, rank_band, rank_of, band_of, team_invited,
     tier_offset, tier_rank, run_tournament, run_event, world_station, honor_points, expected_score, match_delta,
     seed_rating, win_chance, START_RATING, POINT_K, SEED_SPREAD, MIN_RATING, MAX_RATING, RANK_CARRY,
-    play_swiss, play_bracket, group_order, make_groups, simulate_series, map_stat, lineup_of,
+    play_swiss, play_bracket, group_order, make_groups, simulate_series, series_cap, swiss_series_cap, map_stat, lineup_of,
     make_swiss, swiss_round, swiss_result, group_rank,
+    make_ladder, ladder_round, play_ladder, LADDER_STAGES, CLINCH_WINS, CLINCH_LOSSES,
+    make_clinch_swiss, clinch_round,
     event_leaders, stat_entry, team_event_rating, individual_rating, placement_text,
     human_year_plan, event_participants, world_participants, live_rank_of, needs_detailed_stats,
     ask_retire, contract_decision, run_game, play_human_year, RETIRE, status_snapshot,
@@ -230,6 +232,12 @@ function check_calendar() {
             assert.deepEqual(plain(event.draw), [1, 28]);
             assert.deepEqual(plain(event.qual_draw), [29, 36]);
             assert.equal(event.teams, 32);
+            // 阶梯瑞士轮：三个阶段各 5 轮、一天两轮，因此瑞士轮占赛期前 9 天；
+            // 末段留 3 天打 8 强淘汰赛，两者之间不能重叠，否则玩家排期会撞车。
+            assert.equal(event.swiss_rounds, 5, `${event.name} 每阶段应为 5 轮`);
+            assert.equal(event.ladder_stages, 3, `${event.name} 应为三阶段阶梯`);
+            assert.ok(event.start_day + 8 <= event.end_day - 3,
+                `${event.name} 的赛期装不下三阶段阶梯瑞士轮 + 3 天淘汰赛`);
         } else if (event.grade === "A") {
             assert.deepEqual(plain(event.draw), [1, 32]);
             assert.equal(event.qual_draw, null);
@@ -410,7 +418,8 @@ async function check() {
 
     // —— 一站赛事：赛制、场次与名次分布 —— //
     world.reset_season();
-    // S 级已与 Major 同制：32 队 5 轮瑞士轮取 8 强，八强/半决赛 Bo3、决赛 Bo5。
+    // S 级与 Major 同制：三阶段阶梯瑞士轮（竞争组/挑战组/传奇组，各 16 队锁线取 8），
+    // 出线后 8 强单败，八强/半决赛 Bo3、决赛 Bo5。
     const event = game.ANNUAL_CALENDAR.find(e => e.key === "S1");
     assert.equal(event.format, "major");
     const participants = game.world_participants(world, event, null);
@@ -428,12 +437,15 @@ async function check() {
     assert.equal(new Set(summary.standings).size, event.teams);
     assert.equal(summary.champion, summary.standings[0]);
     assert.equal(summary.runner_up, summary.standings[1]);
-    // 5 轮瑞士轮 + 8 强单败（3 轮）：出线后淘汰赛必须全胜，瑞士轮可以输一两场。
-    assert.ok(summary.champion.tour_wins >= 5 && summary.champion.tour_wins <= 8, "冠军是瑞士轮出线 + 三连胜夺冠");
-    assert.ok(summary.champion.tour_losses <= 2);
-    assert.ok(summary.runner_up.tour_wins >= 5 && summary.runner_up.tour_wins <= 7);
-    assert.ok(summary.runner_up.tour_losses >= 1 && summary.runner_up.tour_losses <= 3);
-    // 名次分布：瑞士轮取 8 强，因此八强之后的队伍都算小组出局。
+    // 锁线瑞士轮里晋级者恒为 3 胜，因此「打过几个阶段」直接决定总胜场：
+    // 冠军 = 3 × 阶段数(1～3) + 淘汰赛三连胜，只可能是 6 / 9 / 12 胜。
+    assert.ok([6, 9, 12].includes(summary.champion.tour_wins),
+        `冠军应走完 N 个阶梯阶段 + 淘汰赛三连胜，实际 ${summary.champion.tour_wins} 胜`);
+    assert.ok(summary.champion.tour_losses <= 6, "冠军最多在每个阶段各吞 2 负");
+    assert.ok([5, 8, 11].includes(summary.runner_up.tour_wins),
+        `亚军应走完 N 个阶梯阶段 + 淘汰赛两胜，实际 ${summary.runner_up.tour_wins} 胜`);
+    assert.ok(summary.runner_up.tour_losses >= 1 && summary.runner_up.tour_losses <= 6);
+    // 名次分布：8 强之后都算小组出局。
     const places = {};
     summary.standings.forEach((team, i) => {
         const label = game.placement_text(i + 1, event.teams);
@@ -444,9 +456,16 @@ async function check() {
     assert.equal(places["四强"], 2);
     assert.equal(places["八强"], 4);
     assert.equal(places["小组出局"], 24);
-    // 瑞士轮 5 轮 × 16 场 = 80 场；淘汰赛 4 + 2 + 1 = 7 场（每场两队各记一次）。
+    // 场次不是定值（每个阶段 33 场 + 淘汰赛 7 场，但每队只打自己够得着的阶段）：
+    // 每队至少打满一个阶段的 3 场，最多三个阶段各 5 场 + 淘汰赛 3 场。
+    for (const team of summary.teams) {
+        const games = team.tour_wins + team.tour_losses;
+        assert.ok(games >= 3 && games <= 18, `${team.name} 在 ${event.name} 打了 ${games} 场`);
+    }
+    // 每个阶段恒为 33 场（8+8+8+6+3，锁线规则把 16 队的对阵数完全定死），
+    // 加上淘汰赛 4+2+1 = 7 场，一整站恰好 3 × 33 + 7 = 106 场。
     assert.equal(summary.standings.reduce((sum, team) => sum + team.tour_wins + team.tour_losses, 0),
-        2 * (80 + 4 + 2 + 1));
+        2 * (3 * 33 + 4 + 2 + 1));
     assert.ok(Math.abs(world.teams.reduce((sum, t) => sum + t.rating, 0) - total_before) < 1e-6, "赛事后总积分守恒");
     // 逐图统计：每名选手的地图数等于本队打过的图数，数据都在合理区间。
     const leaders = game.event_leaders(summary);
@@ -495,15 +514,23 @@ async function check() {
             assert.ok(result.champion.tour_wins >= 3, `${item.name} 的冠军场次偏少`);
             assert.ok(result.champion.tour_wins + result.champion.tour_losses <= 10);
         }
-        if (item.format === "major" || item.format === "regional") {
-            // 瑞士轮 + 8 强单败：冠军的淘汰赛 3 场全胜，瑞士轮阶段可能输球。
+        if (item.format === "major") {
+            // 阶梯瑞士轮：冠军走完 1～3 个阶段（每阶段 3 胜、最多 2 负）+ 淘汰赛三连胜，故总胜场只可能是 6/9/12。
+            assert.ok([6, 9, 12].includes(result.champion.tour_wins), `${item.name} 的冠军场次异常`);
+            assert.ok(result.champion.tour_losses <= 6, `${item.name} 的冠军败场偏多`);
+        }
+        if (item.format === "regional") {
+            // 4 轮瑞士轮 + 8 强单败：冠军的淘汰赛 3 场全胜，瑞士轮阶段可能输球。
             assert.ok(result.champion.tour_wins >= 4, `${item.name} 的冠军场次偏少`);
             assert.ok(result.champion.tour_losses <= 3, `${item.name} 的冠军败场偏多`);
         }
         assert.ok(result.standings[0] === result.champion && result.standings[1] === result.runner_up);
+        // 阶梯瑞士轮要连打最多三个阶段，因此 Major/S 级的场次上限比单阶段赛制高得多。
+        const max_games = item.format === "major" ? 18 : 12;
         for (const team of result.teams) {
             assert.ok(team.tour_wins + team.tour_losses >= 1, `${team.name} 在 ${item.name} 一场未打`);
-            assert.ok(team.tour_wins + team.tour_losses <= 12, `${team.name} 在 ${item.name} 打了太多场`);
+            assert.ok(team.tour_wins + team.tour_losses <= max_games,
+                `${team.name} 在 ${item.name} 打了太多场`);
         }
     }
 
@@ -720,6 +747,114 @@ async function check() {
     assert.equal(game.group_rank(swiss_state, swiss_outcome.rest[0].team), 9);
     assert.equal(game.group_rank(swiss_state, swiss_outcome.rest[7].team), 16);
 
+    // —— 阶梯瑞士轮（Major / S 级）的关键不变量：「3 胜」必须是晋级的充分条件 —— //
+    // 旧实现把 32 队塞进一锅 5 轮瑞士轮再取前 8，同战绩配对天然产出 16 支 ≥3 胜的队伍，
+    // 于是每站都有约 8 支 3 胜 2 负的队伍被挡在八强之外（实测占全部 3-2 球队的 79.7%）。
+    // 现在按领域文档改成三阶段各 16 队的锁线瑞士轮，每阶段恰好 8 队 3 胜、8 队 3 负。
+    const ladder_event = game.ANNUAL_CALENDAR.find(e => e.format === "major" && e.circuit === "main");
+    for (let seed = 0; seed < 6; seed++) {
+        const ladder_rng = new game.Random(400 + seed);
+        const ladder = game.make_ladder(world.teams.slice(0, ladder_event.teams));
+        let guard = 0;
+        while (!ladder.done) {
+            game.ladder_round(ladder, ladder_event, ladder_rng, new Map(), false);
+            assert.ok(++guard <= 3 * 5, "每个阶段固定 5 轮，三个阶段不应超过 15 轮");
+        }
+        assert.equal(ladder.results.length, game.LADDER_STAGES.length);
+        assert.equal(guard, 3 * 5, "16 队锁线瑞士轮的轮次完全由对阵数决定，每阶段必须打满 5 轮");
+        for (const item of ladder.results) {
+            assert.equal(item.advancing.length, 8, `${item.name} 应有 8 队晋级`);
+            assert.equal(item.rest.length, 8, `${item.name} 应有 8 队淘汰`);
+            // 晋级者恒为 3 胜、淘汰者恒为 3 负——这就是「3 胜必晋级」。
+            assert.ok(item.advancing.every(entry => entry.wins === game.CLINCH_WINS),
+                `${item.name} 的晋级队伍必须都是 3 胜`);
+            assert.ok(item.rest.every(entry => entry.losses === game.CLINCH_LOSSES),
+                `${item.name} 的淘汰队伍必须都是 3 负`);
+            assert.ok(item.advancing.every(entry => entry.losses < game.CLINCH_LOSSES));
+            assert.ok(item.rest.every(entry => entry.wins < game.CLINCH_WINS));
+            // 每个阶段 33 场（8 + 8 + 8 + 6 + 3），与真实 Major 的瑞士轮场次一致。
+            const games = item.advancing.concat(item.rest).reduce((sum, entry) => sum + entry.wins, 0);
+            assert.equal(games, 33, `${item.name} 应为 33 场`);
+        }
+        assert.equal(ladder.advancing.length, 8);
+        // 名次表：8 强之后按「出局阶段」排——传奇组出局 9～16、挑战组 17～24、竞争组 25～32。
+        assert.equal(ladder.rest.length, 24);
+        const rank_state = {alive: ladder.advancing, rest: ladder.rest};
+        assert.equal(game.group_rank(rank_state, ladder.rest[0].team), 9);
+        assert.equal(game.group_rank(rank_state, ladder.rest[8].team), 17);
+        assert.equal(game.group_rank(rank_state, ladder.rest[16].team), 25);
+        assert.equal(game.group_rank(rank_state, ladder.rest[23].team), 32);
+    }
+    // 阶梯的参赛名单分段：传奇组直邀 8、挑战组直邀 8、竞争组 16（都按引用期名次排）。
+    const ladder_field = world.teams.slice().sort((a, b) => a.rank - b.rank).slice(0, ladder_event.teams);
+    const ladder_probe = game.make_ladder(ladder_field);
+    assert.deepEqual(plain(ladder_probe.legend), plain(ladder_field.slice(0, 8)));
+    assert.deepEqual(plain(ladder_probe.challenger), plain(ladder_field.slice(8, 16)));
+    assert.deepEqual(plain(ladder_probe.competitor), plain(ladder_field.slice(16)));
+    assert.equal(ladder_probe.legend.length + ladder_probe.challenger.length + ladder_probe.competitor.length,
+        ladder_event.teams);
+
+    // —— 系列赛：图数上限＝赛制，平局不可能出现，胜率必须体现实力差 —— //
+    // 历史上 series_maps 把「这一场打几图」抽签定死（70% 两图、55% 四图），被当成封顶用：
+    // 偶数封顶凑不出过半胜场 → 平局 → `winner: a_wins > b_wins ? a : b` 判给后手方 b。
+    // 配对时 a 恒为种子更高的一方，于是每一场平局都送给弱队：引用期 #1 vs #2 只有 32.5% 胜率。
+    const series_world = new game.World(new game.Random(31));
+    const series_ranked = series_world.teams.slice().sort((a, b) => a.rank - b.rank);
+    const series_event = game.ANNUAL_CALENDAR.find(e => e.key === "S1");
+    // 上限就是赛制：非决赛 Bo3、Bo5 决赛 5 图、Bo3 决赛（地区赛）3 图。
+    assert.equal(game.series_cap(false, series_event), 3);
+    assert.equal(game.series_cap(true, game.ANNUAL_CALENDAR.find(e => e.is_major)), 5);
+    assert.equal(game.series_cap(true, game.ANNUAL_CALENDAR.find(e => e.format === "regional")), 3);
+    assert.ok(Math.abs(series_ranked[0].strength() - series_ranked[1].strength()) < 2,
+        "样本队 #1 与 #2 的实力应接近，否则下面的 50% 断言没有意义");
+    const series_rng = new game.Random(2026);
+    const SERIES_TRIALS = 20000;
+    let top_wins = 0;
+    for (let i = 0; i < SERIES_TRIALS; i++) {
+        const out = game.simulate_series(series_ranked[0], series_ranked[1], series_event, series_rng,
+            new Map(), game.series_cap(false, series_event), false);
+        assert.ok(out.a_wins !== out.b_wins, `系列赛不允许平局：${out.a_wins}:${out.b_wins}`);
+        assert.ok(out.a_wins + out.b_wins >= 2 && out.a_wins + out.b_wins <= 3, "非决赛应为 Bo3");
+        if (out.winner === series_ranked[0]) top_wins += 1;
+    }
+    const top_rate = top_wins / SERIES_TRIALS;
+    assert.ok(Math.abs(top_rate - 0.5) < 0.02,
+        `近等实力双方的胜率应接近 50%，实际 ${(top_rate * 100).toFixed(1)}%`);
+    // 强弱必须被体现出来：旧实现在这一格只有 90.7%（平局全送弱队把差距压平了）。
+    let strong_wins = 0;
+    const WEAK_TRIALS = 4000;
+    for (let i = 0; i < WEAK_TRIALS; i++) {
+        const out = game.simulate_series(series_ranked[0], series_ranked[series_ranked.length - 1], series_event,
+            series_rng, new Map(), game.series_cap(false, series_event), false);
+        if (out.winner === series_ranked[0]) strong_wins += 1;
+    }
+    assert.ok(strong_wins / WEAK_TRIALS > 0.9,
+        `引用期第 1 名打末位的胜率过低：${(strong_wins / WEAK_TRIALS * 100).toFixed(1)}%`);
+
+    // —— 赛制切换线：锁线瑞士轮里「胜则晋级 / 负则淘汰」的对局是 Bo3，其余是 Bo1 —— //
+    // 领域文档 §4.2：R1 / R2 全 Bo1，R3 的 2-0 与 0-2 对局、R4 与 R5 的全部对局才是 Bo3。
+    const cap_event = game.ANNUAL_CALENDAR.find(e => e.is_major);
+    for (const [wins, losses, want] of [[0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1],
+        [2, 0, 3], [2, 1, 3], [1, 2, 3], [0, 2, 3], [2, 2, 3]]) {
+        const entry = {wins, losses};
+        assert.equal(game.swiss_series_cap(cap_event, entry, entry), want,
+            `${wins}-${losses} 的局面应为 Bo${want}`);
+    }
+    const shape = game.make_clinch_swiss(series_world.teams.slice(0, 16));
+    const shape_rng = new game.Random(88);
+    const by_round = [];
+    for (let i = 0; i < 8 && shape.table.some(entry => !entry.resolved); i++) {
+        by_round.push(game.clinch_round(shape, cap_event, shape_rng, new Map(), false, "竞争组"));
+    }
+    assert.equal(by_round.length, 5, "16 队锁线瑞士轮应固定 5 轮");
+    assert.deepEqual(plain(by_round.map(list => list.length)), [8, 8, 8, 6, 3], "逐轮场次应为 8/8/8/6/3");
+    const bo1_count = list => list.filter(m => m.a_wins + m.b_wins === 1).length;
+    assert.equal(bo1_count(by_round[0]), 8, "R1 应全为 Bo1");
+    assert.equal(bo1_count(by_round[1]), 8, "R2 应全为 Bo1");
+    assert.equal(bo1_count(by_round[2]), 4, "R3 应只有 1-1 的 4 场是 Bo1");
+    assert.equal(bo1_count(by_round[3]), 0, "R4 应全为 Bo3");
+    assert.equal(bo1_count(by_round[4]), 0, "R5 应全为 Bo3");
+
     // —— 赛季末重排名次 —— //
     world.reset_season();
     for (const player of world.players) player.reset_year();
@@ -760,6 +895,26 @@ async function check() {
             assert.ok(p.you.team && p.you.placement && p.you.maps > 0);
             // 逐场逐图明细：每图双方各 5 行，玩家恰好出现在我方一条。
             assert.ok(p.detail.length > 0, "玩家参赛却没有任何逐场记录");
+            // 同一站里同一个赛程标签最多出现一次（瑞士轮各轮、淘汰赛各轮都不会重打）。
+            // 曾经因为 finish_player_event 把淘汰赛对阵表重置回 8 强，导致四分之一决赛打了两遍、
+            // 已经输掉的队伍复活。玩家视角的赛程重复只能在这里发现。
+            const labels = p.detail.map(match => match.stage);
+            assert.equal(new Set(labels).size, labels.length, `${p.event.name} 出现了重复的赛程标签`);
+            // 阶梯瑞士轮（Major/S 级）：玩家打过的每个阶段都必须是终局战绩——恰好 3 胜（晋级）
+            // 或恰好 3 负（淘汰）。这条直接守住「3 胜必晋级」。
+            const ladder_records = new Map();
+            for (const match of p.detail) {
+                const stage = game.LADDER_STAGES.find(name => match.stage.startsWith(`${name} 第 `));
+                if (!stage) continue;
+                const rec = ladder_records.get(stage) || {wins: 0, losses: 0};
+                if (match.won) rec.wins += 1;
+                else rec.losses += 1;
+                ladder_records.set(stage, rec);
+            }
+            for (const [stage, rec] of ladder_records) {
+                assert.ok(rec.wins === game.CLINCH_WINS || rec.losses === game.CLINCH_LOSSES,
+                    `${p.event.name} 的${stage}战绩 ${rec.wins}-${rec.losses} 不是终局（应 3 胜晋级 / 3 负淘汰）`);
+            }
             for (const match of p.detail) {
                 assert.ok(match.stage && match.opponent && match.score.length === 2);
                 assert.ok(match.maps.length >= 1 && match.maps.length <= 5);
