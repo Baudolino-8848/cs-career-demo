@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>模拟主界面 · 静态设计稿</title>
+<style>
+/* ============================================================
+   模拟主界面 —— 静态设计稿（自包含，假数据）
+   配色沿用 style.css 的冷色令牌：浅灰白底 + 单一青色强调。
+   ============================================================ */
+:root{
+  --bg:#F6F7F9;
+  --surface:#FFFFFF;
+  --surface-2:#F9FAFB;
+  --surface-3:#F1F3F6;
+  --line:#E7EAEF;
+  --line-strong:#D6DBE2;
+
+  --ink:#14171A;
+  --ink-2:#5B6470;
+  --ink-3:#9AA3AF;
+  --ink-4:#C3C9D2;
+
+  --accent:#06B6D4;
+  --accent-d:#0E7490;
+  --accent-soft:#ECFEFF;
+  --accent-line:#A5F3FC;
+
+  --pos:#059669;  --pos-soft:#ECFDF5;
+  --warn:#D97706; --warn-soft:#FFFBEB;
+  --neg:#DC2626;  --neg-soft:#FEF2F2;
+  --violet:#7C3AED; --violet-soft:#F5F3FF;
+
+  --r-xs:6px; --r-sm:9px; --r-md:12px; --r-lg:16px; --r-xl:22px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(16,24,40,.04);
+  --sh-2:0 2px 8px rgba(16,24,40,.06);
+  --sh-3:0 8px 24px rgba(16,24,40,.08);
+
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;padding:20px;
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+/* 设计稿的状态切换条 */
+.mock-bar{
+  max-width:1240px;margin:0 auto 16px;display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--r-md);padding:10px 14px;
+}
+.mock-bar b{font-size:12px;color:var(--ink-2)}
+.mock-switch{margin-left:auto;display:flex;gap:6px}
+.mock-switch button{
+  font:inherit;font-size:11.5px;font-weight:600;padding:5px 13px;border-radius:var(--r-pill);
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer;
+}
+.mock-switch button.on{background:var(--accent);border-color:transparent;color:#fff}
+
+/* ---------- 双栏骨架 ---------- */
+.app{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:258px minmax(0,1fr);gap:18px;align-items:stretch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 14px;box-shadow:var(--sh-1)}
+.card h3{margin:0;font-size:12px;font-weight:700;letter-spacing:.02em}
+
+/* ---------- 左栏 ---------- */
+.side{display:flex;flex-direction:column;gap:12px;position:sticky;top:20px}
+.side .ovr{
+  width:56px;height:56px;flex:none;border-radius:15px;
+  background:linear-gradient(160deg,var(--accent-soft),#F0FDFF);border:1px solid var(--accent-line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.side .ovr b{font-size:23px;font-weight:800;line-height:1;color:var(--accent-d);font-variant-numeric:tabular-nums}
+.side .ovr span{font-size:8.5px;color:var(--ink-3);letter-spacing:.08em;margin-top:2px}
+.who{display:flex;align-items:center;gap:12px}
+.who-info{min-width:0;flex:1}
+.who-name{display:flex;align-items:center;gap:7px;font-size:16px;font-weight:800;letter-spacing:-.01em}
+.who-line{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+.who-line b{color:var(--accent-d)}
+.who-line .money{color:var(--warn);font-weight:700}
+
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;line-height:1;padding:4px 8px;border-radius:var(--r-pill);background:var(--surface-3);color:var(--ink-2);white-space:nowrap}
+.tag.green{background:var(--pos-soft);color:var(--pos)}
+.tag.violet{background:var(--violet-soft);color:var(--violet)}
+.tag.cyan{background:var(--accent-soft);color:var(--accent-d)}
+
+.status-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2)}
+.status-row .dim{color:var(--ink-3)}
+.status-row .rank{margin-left:auto;font-weight:700;color:var(--warn);font-variant-numeric:tabular-nums}
+
+/* 十四维属性 */
+.attr-group + .attr-group{margin-top:11px}
+.attr-group .micro{display:block;font-size:9.5px;letter-spacing:.1em;color:var(--ink-3);font-weight:700;margin-bottom:6px}
+.bar-row{display:flex;align-items:center;gap:9px;padding:2.5px 0}
+.bar-row .lb{width:49px;flex:none;font-size:11.5px;color:var(--ink-2);display:flex;align-items:center;gap:3px;white-space:nowrap}
+.bar-row .lb .core{width:5px;height:5px;border-radius:50%;background:var(--accent);flex:none}
+.bar-row .track{flex:1;height:6px;border-radius:var(--r-pill);background:var(--surface-3);overflow:hidden}
+.bar-row .fill{display:block;height:100%;border-radius:var(--r-pill)}
+.bar-row .fill.t0{background:linear-gradient(90deg,#DFE3E9,#AEB6C0)}
+.bar-row .fill.t1{background:linear-gradient(90deg,#67E8F9,#0891B2)}
+.bar-row .fill.t2{background:linear-gradient(90deg,#6EE7B7,#059669)}
+.bar-row .fill.t3{background:linear-gradient(90deg,#FDE047,#D97706)}
+.bar-row .vl{width:24px;flex:none;text-align:right;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card-head .hint{margin-left:auto;font-size:10px;color:var(--ink-3);display:flex;align-items:center;gap:4px}
+.card-head .hint i{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block}
+
+/* 本赛季 */
+.season-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3.5px 0}
+.season-row > span:first-child{color:var(--ink-3)}
+.season-row .sc{font-weight:700;color:var(--accent-d);font-variant-numeric:tabular-nums}
+
+/* 退役按钮（左栏底部） */
+.btn-retire{
+  width:100%;border:1px solid var(--neg);border-radius:var(--r-md);cursor:pointer;
+  background:var(--neg-soft);color:var(--neg);font:inherit;font-size:13px;font-weight:700;padding:11px;
+  transition:background .15s ease,color .15s ease;
+}
+.btn-retire:hover{background:var(--neg);color:#fff}
+
+/* ---------- 右栏 ---------- */
+.main{min-width:0;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-lg);box-shadow:var(--sh-3);overflow:hidden;display:flex;flex-direction:column}
+.main-head{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.main-head .brand{font-size:12.5px;font-weight:700;white-space:nowrap}
+.main-head .brand .star{color:var(--accent)}
+.main-head .prog{flex:1;display:flex;align-items:center;gap:9px;min-width:0}
+.main-head .prog .track{flex:1;height:4px;border-radius:var(--r-pill);background:var(--surface-3);overflow:hidden;min-width:40px}
+.main-head .prog .track i{display:block;height:100%;width:6%;border-radius:var(--r-pill);background:linear-gradient(90deg,#22D3EE,var(--accent-d))}
+.main-head .prog .txt{font-size:10.5px;color:var(--ink-3);font-family:var(--mono);white-space:nowrap}
+.chip{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent-d);white-space:nowrap}
+
+.main-body{padding:16px;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0}
+
+/* 顶部两卡：队员成员 + 下一场比赛 */
+.top-row{display:grid;grid-template-columns:minmax(0,1fr) 232px;gap:14px}
+
+.team-card .card-head h3{font-size:12.5px}
+.team-card .coach{margin-left:auto;font-size:11px;color:var(--ink-2)}
+.team-card .coach b{color:var(--violet);font-weight:700}
+.members{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.member{
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 6px;text-align:center;background:var(--surface-2);
+}
+.member.me{border-color:var(--accent-line);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+.member .m-id{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member .m-age{font-size:10px;color:var(--ink-3);margin-top:1px}
+.member .m-ovr{font-size:17px;font-weight:800;color:var(--accent-d);font-variant-numeric:tabular-nums;margin-top:3px;line-height:1.1}
+.member .m-ovr small{font-size:9px;color:var(--ink-3);font-weight:600;margin-left:2px}
+.member .m-value{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);font-size:10px;font-weight:700;color:var(--warn);font-variant-numeric:tabular-nums}
+.member .m-value span{font-size:9px;font-weight:600;color:var(--ink-3);margin-right:3px}
+.roles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
+.roles span{
+  text-align:center;font-size:10.5px;color:var(--ink-2);background:var(--surface-3);
+  border-radius:var(--r-pill);padding:3px 0;
+}
+
+/* 下一场比赛 */
+.next-card{display:flex;flex-direction:column;gap:8px}
+.next-head{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.next-head .days{margin-left:auto;font-size:10.5px;color:var(--warn);font-weight:700}
+.next-main{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;text-align:center;background:var(--surface-2)}
+.next-main .n-name{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.next-main .n-tier{margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px 6px;font-size:10px;color:var(--ink-2);background:var(--surface)}
+.next-main .n-tier b{color:var(--violet);font-weight:700}
+.next-main .n-date{margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px 6px;font-size:10px;color:var(--ink-2);background:var(--surface)}
+.next-idle{font-size:11.5px;color:var(--ink-3);text-align:center;padding:14px 0}
+
+/* 模拟状态条 */
+.sim-bar{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-2);padding:0 2px}
+.sim-bar .date{font-family:var(--mono);color:var(--accent-d);font-weight:700}
+.sim-bar .wave{flex:1;height:3px;border-radius:var(--r-pill);background:var(--surface-3);overflow:hidden;position:relative}
+.sim-bar .wave::after{content:"";position:absolute;top:0;bottom:0;width:34%;border-radius:var(--r-pill);background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:slide 1.4s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(320%)}}
+
+/* 生涯日志：撑满右栏剩余高度，与左栏赛季卡片下沿对齐 */
+.log-card{flex:1;min-height:0;display:flex;flex-direction:column}
+.log-card .log{flex:1;overflow:auto}
+.log-card h3{display:flex;align-items:center;gap:8px}
+.log-card h3 .n{font-size:10px;font-weight:600;color:var(--ink-3)}
+.log{margin-top:11px;display:flex;flex-direction:column}
+.log-item{display:grid;grid-template-columns:98px minmax(0,1fr);gap:12px;padding:7px 9px;border-radius:var(--r-sm)}
+.log-item + .log-item{margin-top:2px}
+.log-item .date{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);padding-top:1px;white-space:nowrap}
+.log-item .lines{font-size:12px;color:var(--ink-2);min-width:0}
+.log-item .lines p{margin:0 0 2px}
+.log-item .lines p:last-child{margin-bottom:0}
+.log-item.k-idle .lines{color:var(--ink-3)}
+.log-item.k-match{background:var(--surface-2)}
+.log-item.k-match .lines b{color:var(--accent-d)}
+.log-item.k-event{background:var(--warn-soft);border:1px solid #FDE68A}
+.log-item.k-event .lines .title{color:var(--warn);font-weight:700}
+.log-item.k-event .lines .gain{color:var(--pos);font-size:11px}
+.log-item.k-year .lines{font-weight:700;color:var(--ink)}
+
+/* 事件卡 */
+.event-card{border:1px solid #FDE68A;box-shadow:0 2px 10px rgba(217,119,6,.08)}
+.event-card .ev-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.event-card .ev-kicker{font-size:10px;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--warn);border-radius:var(--r-pill);padding:3px 9px}
+.event-card .ev-title{font-size:13.5px;font-weight:800;color:var(--warn)}
+.event-card .ev-desc{margin:0 0 12px;font-size:12px;color:var(--ink-2)}
+.ev-options{display:grid;gap:8px}
+.ev-option{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  padding:12px 13px;border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer;
+  box-shadow:var(--sh-1);transition:border-color .15s ease,background .15s ease;
+}
+.ev-option:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.ev-option .idx{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:700;background:var(--surface-3);color:var(--ink-2)}
+.ev-option:hover .idx{background:var(--accent);color:#fff}
+.ev-option .txt{flex:1;line-height:1.45}
+.ev-option .ch{color:var(--ink-4);font-size:16px}
+
+/* 底部操作条 */
+.action-bar{display:flex;gap:10px;align-items:center;padding-top:2px}
+.btn-primary{
+  flex:1;border:0;border-radius:var(--r-md);cursor:pointer;font:inherit;font-size:14px;font-weight:600;padding:13px;
+  color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-d));box-shadow:0 6px 16px rgba(6,182,212,.22);
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(6,182,212,.3)}
+.btn-primary:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none}
+
+@media (max-width:820px){
+  body{padding:12px}
+  .app{grid-template-columns:1fr}
+  .side{position:static}
+  .top-row{grid-template-columns:1fr}
+  .members,.roles{grid-template-columns:repeat(5,1fr)}
+  .log-item{grid-template-columns:1fr;gap:2px}
+}
+</style>
+</head>
+<body>
+
+<div class="mock-bar">
+  <b>模拟主界面 · 静态设计稿</b>
+  <span style="font-size:11.5px;color:var(--ink-3)">切换右栏状态查看：</span>
+  <div class="mock-switch">
+    <button data-state="sim" class="on">模拟中</button>
+    <button data-state="pause">等待继续</button>
+    <button data-state="event">事件选择</button>
+  </div>
+</div>
+
+<div class="app">
+  <aside class="side" id="side"></aside>
+  <main class="main">
+    <header class="main-head">
+      <span class="brand">CS 职业选手模拟器 <span class="star">★</span></span>
+      <div class="prog">
+        <span class="track"><i></i></span>
+        <span class="txt" id="prog-txt">赛季第 2 / 350 天</span>
+      </div>
+      <span class="chip">世界 #97</span>
+    </header>
+    <div class="main-body" id="main-body"></div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- 假数据 ---------- */
+const MOCK = {
+  id: "Nice", role: "突破手", team: "Mouz", tier: "一级", value: 12,
+  overall: 37, form: "普通", form_days: 7, world_rank: 15,
+  base: [["反应", 38, 1], ["预瞄", 38, 1], ["压枪", 49, 0], ["定位", 36, 1], ["道具", 29, 0], ["身法", 41, 0]],
+  perf: [["突破", 35, 1], ["残局", 31, 0], ["信息", 32, 0], ["补枪", 39, 0], ["沟通", 32, 0], ["抗压", 36, 0], ["稳定性", 41, 0], ["专注", 46, 0]],
+  season: [["赛季积分", "1000"], ["实时名次", "#97 / 100"], ["出战", "0 站"], ["生涯峰值", "38"]],
+  roster: [
+    {id: "Nice", age: 16, overall: 37, value: 12, me: true},
+    {id: "Player2", age: 24, overall: 37, value: 18},
+    {id: "Player3", age: 24, overall: 37, value: 22},
+    {id: "Player4", age: 24, overall: 37, value: 9},
+    {id: "Player5", age: 24, overall: 37, value: 15},
+  ],
+  roles: ["突破手", "指挥", "辅助", "狙击手", "步枪手"],
+  coach: "Coach1",
+  next: {name: "IEM 科隆", tier: "S 级大赛", from: "3月1日", to: "3月14日", days: 20},
+  logs: [
+    {kind: "match", date: "2026/2/26–3/3", lines: ["<b>A 级 ESL Challenger</b> 结束，止步八强"]},
+    {kind: "idle", date: "2026/3/4–3/6", lines: ["无事发生"]},
+    {kind: "event", date: "2026/3/4–3/7", lines: [
+      '<span class="title">【事件】教练组临时加练</span> 你选择了「研究对手录像」',
+      '<span class="gain">意识 +1</span>',
+      '<span class="gain">专注 +1</span>',
+    ]},
+  ],
+  event: {
+    kicker: "事件 · 4/7", title: "教练组织临时加练",
+    desc: "赛季进入密集期，教练安排了一轮额外的高强度训练。你可以自己选择侧重，但身体状态也要考虑。",
+    options: ["加练枪法", "研究对手录像", "按计划休息"],
+  },
+};
+
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  return n;
+};
+// 设计稿专用：允许用极简标签写日志内容（真实实现里一律走 textContent）。
+const elHtml = (tag, cls, html) => {
+  const n = el(tag, cls);
+  n.innerHTML = html;
+  return n;
+};
+const tierOf = v => (v >= 75 ? 3 : v >= 60 ? 2 : v >= 40 ? 1 : 0);
+
+/* ---------- 左栏 ---------- */
+function renderSide() {
+  const side = document.getElementById("side");
+  const frag = document.createDocumentFragment();
+
+  const who = el("div", "card");
+  const whoRow = el("div", "who");
+  const ovr = el("div", "ovr");
+  ovr.append(el("b", "", String(MOCK.overall)), el("span", "", "总评"));
+  const info = el("div", "who-info");
+  const name = el("div", "who-name");
+  name.append(el("b", "", MOCK.id), el("span", "tag violet", MOCK.role));
+  info.append(name);
+  const l1 = el("div", "who-line");
+  l1.append(document.createTextNode("队伍："), el("b", "", MOCK.team));
+  const l2 = el("div", "who-line");
+  l2.append(document.createTextNode(`队伍级别：${MOCK.tier}　身价：`));
+  l2.append(el("span", "money", `${MOCK.value} 万`));
+  info.append(l1, l2);
+  whoRow.append(ovr, info);
+  who.append(whoRow);
+  frag.append(who);
+
+  const status = el("div", "card");
+  const srow = el("div", "status-row");
+  srow.append(document.createTextNode("状态"));
+  srow.append(el("span", "tag green", MOCK.form));
+  srow.append(el("span", "dim", `剩余 ${MOCK.form_days} 天`));
+  const rank = el("span", "rank", `世界排名 ${MOCK.world_rank}`);
+  srow.append(rank);
+  status.append(srow);
+  frag.append(status);
+
+  const attrs = el("div", "card");
+  const ahead = el("div", "card-head");
+  ahead.append(el("h3", "", "十四维属性"));
+  const hint = el("span", "hint");
+  hint.append(el("i"), document.createTextNode("核心"));
+  ahead.append(hint);
+  attrs.append(ahead);
+  for (const [label, list] of [["基础 · 硬件", MOCK.base], ["表现 · 打成成绩", MOCK.perf]]) {
+    const group = el("div", "attr-group");
+    group.append(el("span", "micro", label));
+    for (const [name2, value, core] of list) {
+      const row = el("div", "bar-row");
+      const lb = el("span", "lb");
+      if (core) lb.append(el("i", "core"));
+      lb.append(document.createTextNode(name2));
+      const track = el("span", "track");
+      const fill = el("i", "fill t" + tierOf(value));
+      fill.style.width = value + "%";
+      track.append(fill);
+      row.append(lb, track, el("span", "vl", String(value)));
+      group.append(row);
+    }
+    attrs.append(group);
+  }
+  frag.append(attrs);
+
+  const season = el("div", "card");
+  const shead = el("div", "card-head");
+  shead.append(el("h3", "", "本赛季"));
+  season.append(shead);
+  for (const [label, value] of MOCK.season) {
+    const row = el("div", "season-row");
+    row.append(el("span", "", label), el("span", "sc", value));
+    season.append(row);
+  }
+  frag.append(season);
+
+  const retire = el("button", "btn-retire", "退役");
+  retire.type = "button";
+  frag.append(retire);
+
+  side.replaceChildren(frag);
+}
+
+/* ---------- 右栏 ---------- */
+function topCards() {
+  const row = el("div", "top-row");
+
+  const team = el("div", "card team-card");
+  const head = el("div", "card-head");
+  head.append(el("h3", "", "队伍成员"));
+  const coach = el("span", "coach");
+  coach.append(document.createTextNode("教练："), el("b", "", MOCK.coach));
+  head.append(coach);
+  team.append(head);
+  const members = el("div", "members");
+  MOCK.roster.forEach((m, i) => {
+    const box = el("div", "member" + (m.me ? " me" : ""));
+    box.append(el("div", "m-id", m.id), el("div", "m-age", `${m.age} 岁`));
+    const ov = el("div", "m-ovr");
+    ov.append(document.createTextNode(String(m.overall)), el("small", "", "总评"));
+    box.append(ov);
+    const value = el("div", "m-value");
+    value.append(el("span", "", "身价"), document.createTextNode(`${m.value} 万`));
+    box.append(value);
+    members.append(box);
+  });
+  team.append(members);
+  const roles = el("div", "roles");
+  MOCK.roles.forEach(r => roles.append(el("span", "", r)));
+  team.append(roles);
+  row.append(team);
+
+  const next = el("div", "card next-card");
+  const nhead = el("div", "next-head");
+  nhead.append(el("span", "", "下一场比赛"), el("span", "days", `距离天数：${MOCK.next.days} 天`));
+  next.append(nhead);
+  const main = el("div", "next-main");
+  main.append(el("div", "n-name", MOCK.next.name));
+  const tier = el("div", "n-tier");
+  tier.append(document.createTextNode("赛事等级："), el("b", "", MOCK.next.tier));
+  const date = el("div", "n-date", `比赛日期 ${MOCK.next.from} — ${MOCK.next.to}`);
+  main.append(tier, date);
+  next.append(main);
+  row.append(next);
+
+  return row;
+}
+
+function simBar(text) {
+  const bar = el("div", "sim-bar");
+  bar.append(el("span", "date", "2029/3/14"), el("span", "", text), el("span", "wave"));
+  return bar;
+}
+
+function logCard() {
+  const card = el("div", "card log-card");
+  const h = el("h3");
+  h.append(document.createTextNode("生涯日志"), el("span", "n", "最近记录"));
+  card.append(h);
+  const log = el("div", "log");
+  MOCK.logs.forEach(item => {
+    const row = el("div", "log-item k-" + item.kind);
+    row.append(el("div", "date", item.date));
+    const lines = el("div", "lines");
+    item.lines.forEach(line => lines.append(elHtml("p", "", line)));
+    row.append(lines);
+    log.append(row);
+  });
+  card.append(log);
+  return card;
+}
+
+function eventCard() {
+  const card = el("div", "card event-card");
+  const head = el("div", "ev-head");
+  head.append(el("span", "ev-kicker", MOCK.event.kicker), el("b", "ev-title", MOCK.event.title));
+  card.append(head, el("p", "ev-desc", MOCK.event.desc));
+  const options = el("div", "ev-options");
+  MOCK.event.options.forEach((text, i) => {
+    const b = el("button", "ev-option");
+    b.type = "button";
+    b.append(el("span", "idx", String(i + 1)), el("span", "txt", text), el("span", "ch", "›"));
+    options.append(b);
+  });
+  card.append(options);
+  return card;
+}
+
+function actionBar(primary) {
+  const bar = el("div", "action-bar");
+  const main = el("button", "btn-primary", primary);
+  main.type = "button";
+  if (primary === "模拟中…") main.disabled = true;
+  bar.append(main);
+  return bar;
+}
+
+let state = "sim";
+function renderMain() {
+  const body = document.getElementById("main-body");
+  const frag = document.createDocumentFragment();
+  frag.append(topCards());
+  if (state === "event") {
+    frag.append(eventCard());
+    frag.append(logCard());
+    frag.append(actionBar("继续模拟"));
+  } else if (state === "pause") {
+    frag.append(simBar("已模拟到 2026/3/7，等待你的决定"));
+    frag.append(logCard());
+    frag.append(actionBar("继续模拟"));
+  } else {
+    frag.append(simBar("模拟中…"));
+    frag.append(logCard());
+    frag.append(actionBar("模拟中…"));
+  }
+  body.replaceChildren(frag);
+}
+
+document.querySelectorAll(".mock-switch button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    state = btn.dataset.state;
+    document.querySelectorAll(".mock-switch button").forEach(b => b.classList.toggle("on", b === btn));
+    renderMain();
+  });
+});
+
+renderSide();
+renderMain();
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CS 职业选手生涯模拟器</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="vrs.js"></script>
+  <script defer src="players.js"></script>
+  <script defer src="data.js"></script>
+  <script defer src="text.js"></script>
+  <script defer src="game.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- —— 左栏：常驻角色面板（身份 / 状态 / 属性 / 本赛季 / 退役）—— -->
+  <aside id="status-panel" class="side" aria-label="角色状态">
+    <div class="side-empty" id="side-empty">
+      <b>尚无生涯</b>
+      <span>输入选手 ID 并开始生涯后，这里会常驻显示角色状态。</span>
+    </div>
+    <div id="side-content" hidden>
+      <div class="card">
+        <div class="player">
+          <div class="avatar"><b id="st-ovr">--</b><span>总评</span></div>
+          <div class="who">
+            <div class="id"><span id="st-id">--</span> <span class="tag violet" id="st-role">--</span></div>
+            <div class="team" id="st-team">--</div>
+            <div class="value" id="st-value"></div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="form-row">
+          <span class="micro">状态</span>
+          <span class="tag" id="st-form">--</span>
+          <span class="tag ghost" id="st-form-days"></span>
+          <span class="rank" id="st-rank"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>十四维属性</h3><span class="hint"><i></i>核心</span></div>
+        <div id="st-attrs"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>本赛季</h3></div>
+        <div id="st-season"></div>
+      </div>
+
+      <button class="btn-retire" id="retire-btn" type="button" disabled>退役</button>
+    </div>
+  </aside>
+
+  <!-- —— 右栏：主模拟区 —— -->
+  <main class="main">
+    <header class="main-head">
+      <span class="brand">CS 职业选手模拟器 <span class="star">&#9733;</span></span>
+      <div class="prog" id="progress" hidden>
+        <span class="track"><i id="progress-fill"></i></span>
+        <span class="txt" id="progress-label"></span>
+      </div>
+      <span class="chip cyan" id="world-rank" hidden></span>
+    </header>
+
+    <div class="main-body">
+      <noscript>请启用浏览器 JavaScript 后游玩。</noscript>
+
+      <form id="start-form">
+        <div class="hero">
+          <div class="logo"></div>
+          <h1>CS 职业选手生涯模拟器</h1>
+          <p>点击选项推进生涯。刷新页面重新开始，当前进度不会保存。</p>
+        </div>
+        <div class="field">
+          <label for="player-id">自定义选手 ID</label>
+          <input id="player-id" name="player-id" type="text" maxlength="24" placeholder="例如：Rookie" autocomplete="off" required>
+        </div>
+        <button class="btn" type="submit">开始生涯</button>
+      </form>
+
+      <div id="game-panel" hidden>
+        <div class="top-row">
+          <div class="card team-card">
+            <div class="card-head">
+              <h3>队伍成员</h3>
+              <span class="coach" id="st-coach"></span>
+            </div>
+            <div class="members" id="st-roster"></div>
+            <div class="roles" id="st-roles"></div>
+          </div>
+          <div class="card next-card" id="next-card"></div>
+        </div>
+
+        <div id="sim-status" role="status" aria-live="polite" hidden></div>
+
+        <div class="card log-card">
+          <div class="card-head"><h3>生涯日志</h3><span class="hint" id="log-hint">本赛季</span></div>
+          <div id="output" class="log" aria-label="游戏记录"></div>
+        </div>
+      </div>
+
+      <section id="choices-panel" hidden>
+        <span id="choice-kicker">事件</span>
+        <h2 id="question"></h2>
+        <p id="choice-desc"></p>
+        <div id="choices" role="group" aria-labelledby="question"></div>
+      </section>
+    </div>
+  </main>
+
+</div>
+
+<!-- —— 赛事总结二级窗口：打开时默认总览，可切详细数据；关闭后销毁内容，无法再查看 —— -->
+<div id="event-modal" class="modal" hidden>
+  <div class="modal-mask"></div>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="ev-title" tabindex="-1">
+    <header class="ev-head">
+      <span class="ev-tier" id="ev-tier"></span>
+      <h1 id="ev-title"></h1>
+      <div class="ev-date" id="ev-date"></div>
+    </header>
+    <div class="ev-body" id="ev-body"></div>
+    <footer class="ev-foot">
+      <button class="ev-btn on" type="button" data-view="overview">总览</button>
+      <button class="ev-btn" type="button" data-view="detail">详细数据</button>
+      <button class="ev-btn close" type="button" data-view="close">关闭</button>
+    </footer>
+  </div>
+</div>
+
+<!-- —— 年度总结二级窗口：进入下一年 / 退役（含二次确认）—— -->
+<div id="season-modal" class="modal" hidden>
+  <div class="modal-mask"></div>
+  <div class="modal-panel season-panel" role="dialog" aria-modal="true" aria-labelledby="season-title" tabindex="-1">
+    <header class="ev-head">
+      <span class="ev-tier" id="season-tier"></span>
+      <h1 id="season-title">年度总结</h1>
+      <div class="ev-date" id="season-sub"></div>
+    </header>
+    <div class="ev-body" id="season-body"></div>
+    <footer class="ev-foot">
+      <button class="ev-btn primary" id="season-next" type="button">进入下一年</button>
+      <button class="ev-btn danger" id="season-retire" type="button">退役</button>
+    </footer>
+    <div class="confirm" id="season-confirm" hidden>
+      <div class="confirm-card">
+        <h4>确定要退役吗？</h4>
+        <p>确认后本赛季立即结束，并进入生涯战报，生涯无法继续。</p>
+        <div class="confirm-actions">
+          <button class="ev-btn danger" id="confirm-yes" type="button">确定退役</button>
+          <button class="ev-btn" id="confirm-no" type="button">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- —— 生涯战报二级窗口：再来一局 —— -->
+<div id="career-modal" class="modal" hidden>
+  <div class="modal-mask"></div>
+  <div class="modal-panel career-panel" role="dialog" aria-modal="true" aria-labelledby="career-title" tabindex="-1">
+    <header class="ev-head">
+      <span class="ev-tier gold" id="career-tier"></span>
+      <h1 id="career-title">生 涯 战 报</h1>
+      <div class="ev-date" id="career-sub"></div>
+    </header>
+    <div class="ev-body" id="career-body"></div>
+    <footer class="ev-foot">
+      <button class="ev-btn primary" id="career-again" type="button">再来一局</button>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

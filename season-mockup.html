@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>年度总结 / 生涯战报 · 静态设计稿</title>
+<style>
+/* ============================================================
+   年度总结 + 生涯战报 —— 二级弹窗设计稿（自包含、假数据）
+   沿用赛事总结窗口（summary-mockup / style.css）的模态与卡片语言。
+   ============================================================ */
+:root{
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F9FAFB; --surface-3:#F1F3F6;
+  --line:#E7EAEF; --line-strong:#D6DBE2;
+  --ink:#14171A; --ink-2:#5B6470; --ink-3:#9AA3AF; --ink-4:#C3C9D2;
+  --accent:#06B6D4; --accent-d:#0E7490; --accent-soft:#ECFEFF; --accent-line:#A5F3FC;
+  --pos:#059669; --pos-soft:#ECFDF5; --warn:#D97706; --warn-soft:#FFFBEB;
+  --neg:#DC2626; --neg-soft:#FEF2F2; --violet:#7C3AED; --violet-soft:#F5F3FF;
+  --r-xs:6px; --r-sm:9px; --r-md:12px; --r-lg:16px; --r-xl:22px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(16,24,40,.04);
+  --sh-2:0 2px 8px rgba(16,24,40,.06);
+  --sh-4:0 24px 60px rgba(16,24,40,.22);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.mock-bar{max-width:1240px;margin:0 auto 16px;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--r-md);padding:10px 14px}
+.mock-bar b{font-size:12px;color:var(--ink-2)}
+.mock-switch{margin-left:auto;display:flex;gap:6px}
+.mock-switch button{font:inherit;font-size:11.5px;font-weight:600;padding:5px 13px;border-radius:var(--r-pill);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.mock-switch button.on{background:var(--accent);border-color:transparent;color:#fff}
+
+/* ---------- 模态（与赛事总结一致） ---------- */
+.modal{position:relative;z-index:60;display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 110px)}
+.modal-mask{position:absolute;inset:-20px;background:rgba(20,23,26,.42);border-radius:var(--r-lg)}
+.modal-panel{
+  position:relative;width:100%;background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:var(--r-xl);box-shadow:var(--sh-4);overflow:hidden;display:flex;flex-direction:column;
+  max-height:calc(100vh - 130px);
+}
+.season-panel{max-width:900px}
+.career-panel{max-width:960px}
+
+/* 头部 */
+.ev-head{padding:16px 26px 18px;text-align:center;border-bottom:1px solid var(--line);flex:none}
+.ev-head h1{margin:0;font-size:21px;font-weight:800;letter-spacing:-.01em}
+.ev-tier{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:var(--r-pill);margin-bottom:7px;background:var(--accent-soft);color:var(--accent-d)}
+.ev-tier.gold{background:var(--warn-soft);color:var(--warn)}
+.ev-tier.violet{background:var(--violet-soft);color:var(--violet)}
+.ev-date{display:inline-block;margin-top:11px;font-size:12px;color:var(--ink-2);border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 16px;background:var(--surface-2)}
+.ev-date b{color:var(--accent-d);font-weight:700}
+.ev-date .up{color:var(--pos);font-weight:700}
+.ev-date .dn{color:var(--neg);font-weight:700}
+
+/* 主体 */
+.ev-body{flex:1;min-height:0;overflow:auto;background:var(--surface-2);padding:16px}
+.ev-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 14px;box-shadow:var(--sh-1)}
+.ev-card + .ev-card{margin-top:12px}
+.ev-card h3{margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:.02em;text-align:center}
+
+/* 两列 / 三列小卡 */
+.stat-grid{display:grid;gap:12px}
+.stat-grid.cols-2{grid-template-columns:1fr 1fr}
+.stat-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.metric{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 8px;text-align:center}
+.metric b{display:block;font-size:17px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.metric span{font-size:9.5px;color:var(--ink-3);letter-spacing:.04em}
+.metric.cy b{color:var(--accent-d)}
+.metric.yl b{color:var(--warn)}
+.metric.gr b{color:var(--pos)}
+.metric.violet b{color:var(--violet)}
+
+/* 队伍排名行 */
+.rank-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rank-team{display:flex;align-items:baseline;gap:8px;min-width:0}
+.rank-team b{font-size:16px;font-weight:800;color:var(--accent-d);letter-spacing:-.01em}
+.rank-team span{font-size:11px;color:var(--ink-3)}
+.rank-badge{margin-left:auto;display:flex;align-items:baseline;gap:6px}
+.rank-badge .lb{font-size:10px;color:var(--ink-3);letter-spacing:.08em}
+.rank-badge .vl{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--warn)}
+.rank-badge .mv{font-size:12px;font-weight:700}
+.rank-badge .mv.up{color:var(--pos)}
+.rank-badge .mv.dn{color:var(--neg)}
+.rank-badge .mv.flat{color:var(--ink-3)}
+
+/* 属性变化 */
+.attr-deltas{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+.attr-delta{border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 4px;text-align:center;background:var(--surface-2)}
+.attr-delta span{display:block;font-size:9.5px;color:var(--ink-3)}
+.attr-delta b{display:block;font-family:var(--mono);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.attr-delta b.up{color:var(--pos)}
+.attr-delta b.dn{color:var(--neg)}
+.attr-delta b.flat{color:var(--ink-4)}
+
+/* Top20 榜 */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);overflow:hidden}
+.board h3{margin:0;padding:11px 14px;font-size:12px;font-weight:700;text-align:center;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.board ol{list-style:none;margin:0;padding:6px 8px}
+.board li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:9px;padding:6px 7px;border-radius:var(--r-sm);font-size:12px}
+.board li:nth-child(odd){background:var(--surface-2)}
+.board li.me{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+.board li .no{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink-3);text-align:right}
+.board li .no.top{color:var(--warn)}
+.board li .nm{min-width:0;display:flex;align-items:baseline;gap:6px;overflow:hidden}
+.board li .nm b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.board li .nm span{font-size:10px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.board li .vl{font-family:var(--mono);font-weight:800;font-variant-numeric:tabular-nums}
+
+/* 生涯时间线 */
+.timeline{width:100%;border-collapse:collapse;font-size:12px}
+.timeline th{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);text-align:right;padding:7px 10px;background:var(--surface-2);border-bottom:1px solid var(--line-strong);white-space:nowrap}
+.timeline th:first-child,.timeline th:nth-child(2),.timeline th:nth-child(3){text-align:left}
+.timeline td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.timeline td:first-child,.timeline td:nth-child(2),.timeline td:nth-child(3){text-align:left;font-family:var(--sans);color:var(--ink)}
+.timeline td.team{font-weight:600;color:var(--accent-d)}
+.timeline td .star{color:var(--warn)}
+.timeline tr.hot td{background:var(--warn-soft)}
+
+/* 荣誉室 */
+.honors{display:flex;flex-direction:column;gap:6px}
+.honor{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 11px}
+.honor .star{color:var(--warn);font-size:13px}
+.honor .mvp-mark{color:var(--accent);font-size:13px}
+/* 赛事 MVP 与冠军区分：青色、左侧描边 */
+.honor.mvp{border-color:var(--accent-line);background:var(--accent-soft)}
+.honor.mvp .kind{font-size:9.5px;font-weight:700;color:#fff;background:var(--accent);border-radius:var(--r-pill);padding:1px 7px}
+.honor.empty{color:var(--ink-4);justify-content:center}
+
+/* Top20 榜单底部：玩家名次 */
+.board-note{padding:9px 14px;font-size:11.5px;color:var(--accent-d);font-weight:700;text-align:center;border-top:1px solid var(--line);background:var(--accent-soft)}
+
+/* 退役二次确认：盖在弹窗内的小卡片 */
+.confirm{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(20,23,26,.34);padding:20px}
+.confirm-card{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-lg);box-shadow:var(--sh-4);padding:20px 22px;max-width:352px;text-align:center}
+.confirm-card h4{margin:0 0 8px;font-size:15px;font-weight:800}
+.confirm-card p{margin:0 0 16px;font-size:12px;line-height:1.6;color:var(--ink-2)}
+.confirm-actions{display:flex;gap:10px;justify-content:center}
+.confirm-actions .ev-btn{min-width:106px;padding:9px 16px;font-size:12.5px}
+
+/* 底部按钮 */
+.ev-foot{flex:none;display:flex;justify-content:center;gap:12px;padding:14px 26px 18px;border-top:1px solid var(--line);background:var(--surface)}
+.ev-btn{font:inherit;font-size:13px;font-weight:600;min-width:128px;padding:11px 24px;border-radius:var(--r-md);cursor:pointer;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);transition:border-color .15s ease,background .15s ease,color .15s ease,transform .15s ease}
+.ev-btn:hover{border-color:var(--accent-line);color:var(--accent-d)}
+.ev-btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-d));border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(6,182,212,.24)}
+.ev-btn.primary:hover{transform:translateY(-1px);color:#fff}
+.ev-btn.danger{border-color:var(--neg);background:var(--neg-soft);color:var(--neg)}
+.ev-btn.danger:hover{background:var(--neg);color:#fff}
+
+/* 退役原因 */
+.retire-note{text-align:center;font-size:12px;color:var(--ink-2);padding:11px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1)}
+.retire-note b{color:var(--warn);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="mock-bar">
+  <b>年度总结 / 生涯战报 · 静态设计稿</b>
+  <div class="mock-switch">
+    <button data-view="season" class="on">年度总结</button>
+    <button data-view="career">生涯战报</button>
+  </div>
+</div>
+
+<!-- ============ 年度总结 ============ -->
+<div class="modal" id="modal-season">
+  <div class="modal-mask"></div>
+  <div class="modal-panel season-panel">
+    <header class="ev-head">
+      <span class="ev-tier">2030 赛季</span>
+      <h1>年度总结</h1>
+      <div class="ev-date">Nice · 突破手 · 21 岁&nbsp;&nbsp;|&nbsp;&nbsp;Mouz <b>VRS 一线队</b></div>
+    </header>
+    <div class="ev-body">
+
+      <div class="ev-card">
+        <div class="rank-row">
+          <div class="rank-team">
+            <b>Mouz</b>
+            <span>VRS 一线队 · 世界第 6 名</span>
+          </div>
+          <div class="rank-badge">
+            <span class="lb">赛季积分</span>
+            <span class="vl">1064</span>
+            <span class="mv up">↑ 12 位</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ev-card">
+        <h3>本赛季</h3>
+        <div class="stat-grid cols-3">
+          <div class="metric cy"><b>12</b><span>出战站数</span></div>
+          <div class="metric cy"><b>28</b><span>地图数</span></div>
+          <div class="metric yl"><b>2</b><span>冠军</span></div>
+          <div class="metric gr"><b>1.18</b><span>平均 Rating</span></div>
+          <div class="metric"><b>1.32</b><span>K / D</span></div>
+          <div class="metric"><b>78</b><span>场均 ADR</span></div>
+          <div class="metric yl"><b>456</b><span>击杀</span></div>
+          <div class="metric"><b>345</b><span>阵亡</span></div>
+          <div class="metric cy"><b>268 万</b><span>身价 ↑42</span></div>
+        </div>
+      </div>
+
+      <div class="ev-card">
+        <h3>属性变化</h3>
+        <div class="attr-deltas" id="season-attrs"></div>
+      </div>
+
+      <div class="board">
+        <h3>2030 年度世界 Top20 评选</h3>
+        <ol id="season-top20"></ol>
+        <div class="board-note">你 · 第 7 名（入选 Top20）</div>
+      </div>
+    </div>
+    <footer class="ev-foot">
+      <button class="ev-btn primary" type="button">进入下一年</button>
+      <button class="ev-btn danger" id="season-retire" type="button">退役</button>
+    </footer>
+
+    <!-- 退役二次确认 -->
+    <div class="confirm" id="season-confirm" hidden>
+      <div class="confirm-card">
+        <h4>确定要退役吗？</h4>
+        <p>确认后本赛季立即结束，并进入生涯战报，生涯无法继续。</p>
+        <div class="confirm-actions">
+          <button class="ev-btn danger" id="confirm-yes" type="button">确定退役</button>
+          <button class="ev-btn" id="confirm-no" type="button">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 生涯战报 ============ -->
+<div class="modal" id="modal-career" hidden>
+  <div class="modal-mask"></div>
+  <div class="modal-panel career-panel">
+    <header class="ev-head">
+      <span class="ev-tier gold">最终评级 S</span>
+      <h1>生 涯 战 报</h1>
+      <div class="ev-date">Nice · 突破手 · <b>世界第一 —— 多届 Major 冠军得主</b></div>
+    </header>
+    <div class="ev-body">
+
+      <div class="ev-card">
+        <h3>生涯概览</h3>
+        <div class="stat-grid cols-3">
+          <div class="metric cy"><b>7</b><span>赛季 · 16-22 岁</span></div>
+          <div class="metric cy"><b>78</b><span>出战站数</span></div>
+          <div class="metric"><b>186</b><span>地图数</span></div>
+          <div class="metric"><b>92</b><span>生涯峰值（最终 89）</span></div>
+          <div class="metric gr"><b>1.19</b><span>平均 Rating</span></div>
+          <div class="metric"><b>1.31</b><span>K / D</span></div>
+          <div class="metric yl"><b>3120</b><span>生涯击杀</span></div>
+          <div class="metric"><b>2380</b><span>阵亡</span></div>
+          <div class="metric yl"><b>5</b><span>赛事冠军</span></div>
+          <div class="metric violet"><b>4</b><span>入选 Top20</span></div>
+          <div class="metric violet"><b>1</b><span>年度第一</span></div>
+          <div class="metric cy"><b>320 万</b><span>身价</span></div>
+        </div>
+      </div>
+
+      <div class="ev-card">
+        <h3>生涯时间线</h3>
+        <table class="timeline">
+          <thead>
+            <tr><th>年份</th><th>年龄</th><th>队伍</th><th>档位</th><th>名次</th><th>出战</th><th>冠军</th><th>Rating</th></tr>
+          </thead>
+          <tbody id="career-timeline"></tbody>
+        </table>
+      </div>
+
+      <div class="ev-card">
+        <h3>荣誉室</h3>
+        <div class="honors" id="career-honors"></div>
+      </div>
+
+      <div class="retire-note" style="margin-top:12px">退役原因：<b>主动宣布退役</b></div>
+    </div>
+    <footer class="ev-foot">
+      <button class="ev-btn primary" type="button">再来一局</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+
+/* ---------- 假数据 ---------- */
+const ATTRS = [["反应",4],["预瞄",6],["压枪",2],["定位",3],["道具",5],["身法",2],["突破",6],
+               ["残局",3],["信息",4],["补枪",2],["沟通",5],["抗压",3],["稳定性",4],["专注",7]];
+const TOP20 = [
+  [1,"donk","Spirit","步枪手",1.35],
+  [2,"ZywOo","Vitality","狙击手",1.31],
+  [3,"m0NESY","Falcons","狙击手",1.28],
+  [4,"NiKo","Falcons","步枪手",1.25],
+  [5,"ropz","Vitality","自由人",1.22],
+  [6,"sh1ro","Spirit","狙击手",1.21],
+  [7,"Nice","Mouz","突破手",1.18],
+  [8,"b1t","NAVI","步枪手",1.17],
+  [9,"frozen","Mouz","指挥",1.15],
+  [10,"jimpphat","MOUZ","辅助",1.13],
+];
+const TIMELINE = [
+  ["2032",22,"Mouz","一线队",4,12,1,1.24,true],
+  ["2031",21,"Mouz","一线队",9,11,2,1.19,true],
+  ["2030",20,"Mouz","世界强队",11,12,1,1.16,false],
+  ["2029",19,"Mouz","世界强队",16,10,0,1.09,false],
+  ["2028",18,"Spirit","顶级豪门",3,9,1,1.12,true],
+  ["2027",17,"Pulse Sharks","甲级",42,8,0,0.98,false],
+  ["2026",16,"Pulse Sharks","丙级",97,6,0,0.91,false],
+];
+const HONORS = [
+  ["win", "22 岁 Major 春季赛 冠军"],
+  ["mvp", "22 岁 Major 春季赛 MVP"],
+  ["win", "21 岁 BLAST Spring 冠军"],
+  ["win", "21 岁 Major 冬季赛 亚军"],
+  ["mvp", "21 岁 BLAST Spring MVP"],
+  ["win", "20 岁 IEM Katowice 冠军"],
+  ["mvp", "20 岁 ESL 挑战者 墨尔本 MVP"],
+  ["win", "18 岁 裂变天地 上海 冠军"],
+];
+
+/* ---------- 渲染 ---------- */
+$("season-attrs").replaceChildren(...ATTRS.map(([label, delta]) => {
+  const box = document.createElement("div");
+  box.className = "attr-delta";
+  const name = document.createElement("span");
+  name.textContent = label;
+  const value = document.createElement("b");
+  value.className = delta > 0 ? "up" : delta < 0 ? "dn" : "flat";
+  value.textContent = (delta > 0 ? "+" : "") + delta;
+  box.append(name, value);
+  return box;
+}));
+
+$("season-top20").replaceChildren(...TOP20.map(([no, id, team, role, rating]) => {
+  const li = document.createElement("li");
+  if (id === "Nice") li.className = "me";
+  const index = document.createElement("span");
+  index.className = "no" + (no <= 3 ? " top" : "");
+  index.textContent = no;
+  const name = document.createElement("span");
+  name.className = "nm";
+  const who = document.createElement("b");
+  who.textContent = id;
+  const meta = document.createElement("span");
+  meta.textContent = `${team} · ${role}`;
+  name.append(who, meta);
+  const value = document.createElement("span");
+  value.className = "vl";
+  value.textContent = rating.toFixed(2);
+  li.append(index, name, value);
+  return li;
+}));
+
+$("career-timeline").replaceChildren(...TIMELINE.map(row => {
+  const [year, age, team, tier, rank, n, titles, rating, hot] = row;
+  const tr = document.createElement("tr");
+  if (hot) tr.className = "hot";
+  const cells = [
+    [year, ""], [`${age} 岁`, ""], [team, "team"], [tier, ""],
+    [`#${rank}`, ""], [`${n} 站`, ""], [`${titles} 冠`, ""], [rating.toFixed(2), ""],
+  ];
+  for (const [text, cls] of cells) {
+    const td = document.createElement("td");
+    if (cls) td.className = cls;
+    td.textContent = text;
+    tr.append(td);
+  }
+  if (hot) {
+    const star = document.createElement("span");
+    star.className = "star";
+    star.textContent = " ★";
+    tr.lastChild.append(star);
+  }
+  return tr;
+}));
+
+$("career-honors").replaceChildren(...HONORS.map(([kind, text]) => {
+  const row = document.createElement("div");
+  row.className = "honor" + (kind === "mvp" ? " mvp" : "");
+  const mark = document.createElement("span");
+  mark.className = kind === "mvp" ? "mvp-mark" : "star";
+  mark.textContent = kind === "mvp" ? "◆" : "★";
+  row.append(mark);
+  if (kind === "mvp") row.append(el("span", "kind", "MVP"));
+  row.append(document.createTextNode(text));
+  return row;
+
+  function el(tag, cls, value) {
+    const node = document.createElement(tag);
+    node.className = cls;
+    node.textContent = value;
+    return node;
+  }
+}));
+
+// 退役二次确认：确认后关闭年度总结、切到生涯战报（正式退役）。
+const confirm_layer = $("season-confirm");
+$("season-retire").addEventListener("click", () => { confirm_layer.hidden = false; });
+$("confirm-no").addEventListener("click", () => { confirm_layer.hidden = true; });
+$("confirm-yes").addEventListener("click", () => {
+  confirm_layer.hidden = true;
+  $("modal-season").hidden = true;
+  $("modal-career").hidden = false;
+  document.querySelectorAll(".mock-switch button").forEach(other => other.classList.toggle("on", other.dataset.view === "career"));
+});
+
+document.querySelectorAll(".mock-switch button").forEach(button => {
+  button.addEventListener("click", () => {
+    const view = button.dataset.view;
+    document.querySelectorAll(".mock-switch button").forEach(other => other.classList.toggle("on", other === button));
+    $("modal-season").hidden = view !== "season";
+    $("modal-career").hidden = view !== "career";
+    confirm_layer.hidden = true;
+  });
+});
+</script>
+</body>
+</html>
