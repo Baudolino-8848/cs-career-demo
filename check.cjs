@@ -8,7 +8,7 @@ const source = ["vrs.js", "players.js", "data.js", "text.js", "game.js"].map(fil
 const game = vm.runInNewContext(source + `\n({
     Random, Player, Team, World, ATTR_KEYS, ROLES, ROLE_NAMES, EVENTS, ANNUAL_CALENDAR, RANK_BANDS, role_attr_factor,
     VRS_TEAMS, PLAYER_DB, TIERS, LEAGUES, BOUNDS, vrs_tier, league_of, league_key, vrs_weight, record_performance,
-    round, overall_of, tier_of, npc_retire_chance, make_human, move_to_team, apply_effects, growth, grade_of,
+    round, overall_of, tier_of, npc_retire_chance, make_human, move_to_team, apply_effects, option_hint, growth, grade_of,
     event_field, eligible_tournaments, event_allows, rank_band, rank_of, band_of, team_invited,
     tier_offset, tier_rank, run_tournament, run_event, world_station, honor_points, expected_score, match_delta,
     seed_rating, win_chance, START_RATING, POINT_K, SEED_SPREAD, MIN_RATING, MAX_RATING, RANK_CARRY,
@@ -552,13 +552,24 @@ async function check() {
     // —— 玩家：事件、转会、合同、退役 —— //
     human.year = 4;
     for (const key of game.ATTR_KEYS) human[key] = 50;
-    // 辅助的核心属性「道具」权重最高：同一事件里它的成长应高于非核心的「预瞄」，验证位置侧重。
+    // 辅助的核心属性「道具」权重最高：同一事件里它的成长应高于非核心的「预瞄」。
+    // 区间取大值只为放大 factor 差异、回避单次随机波动。
     game.apply_effects(human, {role: "辅助", preaim: [40, 40], utility: [40, 40], composure: [40, 40]}, rng, []);
     assert.equal(human.role, "辅助");
     assert.equal(human.last_role_year, 4);
     assert.ok(human.utility - 50 > human.preaim - 50, "辅助的道具成长应高于预瞄");
     assert.ok(human.utility - 50 >= human.composure - 50, "辅助的道具成长不低于抗压");
-    assert.ok(human.preaim - 50 > 0, "非核心属性也应有成长");
+    // 标准档（EVENT_SCALE = 0.5）下真实小区间不再被取整归零；用独立随机源，避免扰动主随机流。
+    const preaim_before = human.preaim;
+    game.apply_effects(human, {preaim: [3, 5]}, new game.Random(1), []);
+    assert.ok(human.preaim - preaim_before > 0, "真实小区间在标准档下不应被归零");
+    // 选项方向标签：只标注该位置上缩放取整后仍可能变化的属性（辅助的道具高权重、突破极低权重）。
+    const hints = game.option_hint({utility: [3, 5], entry: [1, 2], preaim: [-2, 1]}, "辅助");
+    const tone_of = Object.fromEntries(hints.map(hint => [hint.text.split(" ")[0], hint.tone]));
+    assert.equal(tone_of["道具"], "up", "辅助的道具应标为上升");
+    assert.equal(tone_of["预瞄"], "down", "预瞄区间偏负应标为下降");
+    assert.equal(tone_of["突破"], undefined, "辅助的突破权重极低且区间小，实际不涨，不应标注");
+    assert.ok(game.option_hint({tier: 1}, "辅助").some(hint => hint.text === "转会升档"));
     // 位置侧重函数：道具一项，指挥（权重 0.10）明显高于突破手（权重 0.02）。
     assert.ok(game.role_attr_factor("指挥", "utility") > game.role_attr_factor("突破手", "utility") * 2);
     // 属性下限联动：表现属性高时，关联的基础属性不会低（单向保底，反向不成立）。

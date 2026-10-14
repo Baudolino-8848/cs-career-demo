@@ -1431,6 +1431,26 @@ function apply_effects(p, fx, rng, lines) {
     invalidate(p);
 }
 
+// 把事件选项的 fx 转成事件卡上的方向标签：只标注在当前位置上「缩放取整后仍可能变化」的属性，
+// 避免界面标了却实际不涨。tone 为 up / down / both / neutral，供渲染层上色。
+function option_hint(fx, role) {
+    const hints = [];
+    if ("role" in fx && fx.role !== role) hints.push({text: "转职 " + fx.role, tone: "neutral"});
+    if ("tier" in fx) hints.push({text: fx.tier > 0 ? "转会升档" : "转会降档", tone: "neutral"});
+    if ("buff" in fx) hints.push({text: "临场 +" + round(fx.buff * 100) + "%", tone: "neutral"});
+    if (fx.injured) hints.push({text: "伤病风险", tone: "neutral"});
+    for (const [key, label] of ATTRS) {
+        if (!(key in fx)) continue;
+        const factor = EVENT_SCALE * role_attr_factor(role, key);
+        const up = round(fx[key][1] * factor) > 0;
+        const down = round(fx[key][0] * factor) < 0;
+        if (!up && !down) continue;
+        const tone = up && down ? "both" : up ? "up" : "down";
+        hints.push({text: label + (up && down ? " ±" : up ? " ↑" : " ↓"), tone});
+    }
+    return hints;
+}
+
 // 先筛触发条件与同年去重，再按权重累加抽样；所有可用事件用完后才允许同年重复。
 function draw_event(p, rng, upcoming_major, used_ids) {
     let pool = EVENTS.filter(e => e.cond(p, upcoming_major) && !used_ids.has(e.id));
@@ -1446,8 +1466,8 @@ function draw_event(p, rng, upcoming_major, used_ids) {
 }
 
 // 选择接口返回从零开始的索引，或 RETIRE（玩家在等待点点了「退役」）。
-// 自动模式仅使用随机数并写日志；非自动模式下事件标题、说明与选项交给渲染层的事件卡呈现。
-async function present_event(event, auto, rng, io, date = null) {
+// 自动模式仅使用随机数并写日志；非自动模式下事件标题、说明与选项（含属性方向标签）交给渲染层的事件卡呈现。
+async function present_event(event, p, auto, rng, io, date = null) {
     if (auto) {
         io.write();
         io.write((date ? c(date_label(date) + "  ", DIM) : "") + c("【事件】" + event.title, YELLOW + ";" + BOLD));
@@ -1458,7 +1478,8 @@ async function present_event(event, auto, rng, io, date = null) {
         return index;
     }
     return io.choose("请选择你的行动", event.options.map(option => option.text),
-        {kind: "event", title: event.title, desc: event.desc, allow_retire: true});
+        {kind: "event", title: event.title, desc: event.desc, allow_retire: true,
+         hints: event.options.map(option => option_hint(option.fx, p.role))});
 }
 
 // 同一年龄阶段对全部属性采用相同成长规则；29 岁起身体类衰退、意识/心态类仍缓慢增长。
@@ -1851,7 +1872,7 @@ async function play_human_year(human, rng, auto, io) {
             const drawn = draw_event(human, rng, Boolean(upcoming && upcoming.event.is_major), used_ids);
             if (drawn) {
                 used_ids.add(drawn.id);
-                const answer = await present_event(drawn, auto, rng, io, date);
+                const answer = await present_event(drawn, human, auto, rng, io, date);
                 if (answer === RETIRE) {
                     human.retire_requested = true;
                     break;

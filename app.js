@@ -819,9 +819,17 @@ const io = {
             options.forEach((label, index) => {
                 const button = document.createElement("button");
                 button.type = "button";
+                const txt = el("span", "txt", label);
+                // meta.hints 与 options 一一对应：非空时在选项下追加一排属性方向标签。
+                const hints = meta.hints && meta.hints[index];
+                if (hints && hints.length) {
+                    const sub = el("span", "sub");
+                    for (const hint of hints) sub.append(el("span", "hint " + hint.tone, hint.text));
+                    txt.append(sub);
+                }
                 button.append(
                     el("span", "idx", String(index + 1)),
-                    el("span", "txt", label),
+                    txt,
                     el("span", "ch", "›"),
                 );
                 button.addEventListener("click", () => {

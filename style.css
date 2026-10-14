@@ -369,6 +369,14 @@ body.in-game #choices-panel.plain{box-shadow:0 10px 30px rgba(16,24,40,.14)}
 #choices button:hover .idx{background:var(--accent);color:#fff}
 #choices button .txt{flex:1;line-height:1.45}
 #choices button .ch{color:var(--ink-4);font-size:16px}
+/* 选项下方的属性方向标签（事件卡）：只标在该位置上可能变化的属性 */
+#choices button .txt .sub{
+    display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;
+    font-size:11px;font-weight:500;line-height:1.3;color:var(--ink-3);
+}
+#choices button .txt .sub .hint.up{color:var(--pos)}
+#choices button .txt .sub .hint.down{color:var(--neg)}
+#choices button .txt .sub .hint.both{color:var(--warn)}
 
 /* ============================================================
    日志颜色：对应 text.js 里的 ANSI 色码，类名必须与 app.js 的映射一致
