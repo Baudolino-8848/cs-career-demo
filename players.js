@@ -3,359 +3,362 @@
 // PLAYER_DB：100 支战队共 500 名选手的固定开局档案（2026 赛季快照）。
 // 每支队伍一组，键为队名（与 vrs.js 的 name 完全一致），数组顺序与 vrs.js 的 roster 一一对应。
 // 每条含位置 role、年龄 age 与十四维属性 attrs（键顺序同 data.js 的 ATTR_KEYS）。
-// 这份数据是开局时装载的唯一来源，不再随机生成；赛季推进后成长、衰退、转会照旧。
-// 退役或转会后补位的新人由 game.js 按队伍档位随机生成，不写入本文件。
+// 前 50 队（真实 VRS 选手）的位置、年龄、属性与身价均按现实设定（年龄为 2026 年实际年龄），还带
+// 人设身价 value（万）：属性以「现实水平基准 + 位置画像 + 个体特长/短板」展开，身价按现实名气与
+// 年龄潜力给定；后 50 队为虚构名单，无 value。
+// 这份数据是开局时装载的唯一来源，不再随机生成；赛季推进后成长、衰退、转会（以及身价随总评与
+// 年龄的变化）照旧。退役或转会后补位的新人由 game.js 按队伍档位随机生成，不写入本文件。
 // bobeksde 在 Alliance 与 EYEBALLERS 各有一条独立档案，与 vrs.js 的两个席位对应。
 const PLAYER_DB = {
     "Spirit": [
-        {"id":"donk","role":"步枪手","age":26,"attrs":{"reaction":94,"preaim":98,"spray":97,"positioning":94,"utility":85,"movement":96,"entry":99,"clutch":92,"info":89,"trade":95,"comms":90,"composure":92,"stability":92,"focus":92}},
-        {"id":"magixx","role":"辅助","age":29,"attrs":{"reaction":79,"preaim":79,"spray":78,"positioning":80,"utility":89,"movement":78,"entry":76,"clutch":79,"info":86,"trade":84,"comms":87,"composure":82,"stability":81,"focus":81}},
-        {"id":"sh1ro","role":"狙击手","age":28,"attrs":{"reaction":93,"preaim":97,"spray":86,"positioning":91,"utility":82,"movement":86,"entry":85,"clutch":93,"info":88,"trade":83,"comms":82,"composure":89,"stability":94,"focus":92}},
-        {"id":"tN1R","role":"步枪手","age":18,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"zont1x","role":"自由人","age":18,"attrs":{"reaction":84,"preaim":86,"spray":83,"positioning":88,"utility":83,"movement":85,"entry":82,"clutch":90,"info":86,"trade":82,"comms":81,"composure":84,"stability":83,"focus":82}}
+        {"id":"donk","role":"步枪手","age":19,"attrs":{"reaction":94,"preaim":98,"spray":97,"positioning":94,"utility":85,"movement":96,"entry":99,"clutch":92,"info":89,"trade":95,"comms":90,"composure":92,"stability":92,"focus":92},"value":500},
+        {"id":"magixx","role":"辅助","age":24,"attrs":{"reaction":79,"preaim":79,"spray":78,"positioning":80,"utility":89,"movement":78,"entry":76,"clutch":79,"info":86,"trade":84,"comms":87,"composure":82,"stability":81,"focus":81},"value":280},
+        {"id":"sh1ro","role":"狙击手","age":25,"attrs":{"reaction":93,"preaim":97,"spray":86,"positioning":91,"utility":82,"movement":86,"entry":85,"clutch":93,"info":88,"trade":83,"comms":82,"composure":89,"stability":94,"focus":92},"value":460},
+        {"id":"tN1R","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":250},
+        {"id":"zont1x","role":"自由人","age":22,"attrs":{"reaction":84,"preaim":86,"spray":83,"positioning":88,"utility":83,"movement":85,"entry":82,"clutch":90,"info":86,"trade":82,"comms":81,"composure":84,"stability":83,"focus":82},"value":300}
     ],
     "Falcons": [
-        {"id":"karrigan","role":"指挥","age":21,"attrs":{"reaction":77,"preaim":68,"spray":70,"positioning":79,"utility":83,"movement":75,"entry":70,"clutch":80,"info":93,"trade":77,"comms":91,"composure":83,"stability":80,"focus":81}},
-        {"id":"kyousuke","role":"步枪手","age":20,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79}},
-        {"id":"m0NESY","role":"狙击手","age":17,"attrs":{"reaction":97,"preaim":99,"spray":87,"positioning":94,"utility":83,"movement":87,"entry":86,"clutch":90,"info":89,"trade":84,"comms":83,"composure":90,"stability":92,"focus":93}},
-        {"id":"NiKo","role":"步枪手","age":26,"attrs":{"reaction":90,"preaim":98,"spray":97,"positioning":90,"utility":87,"movement":88,"entry":94,"clutch":91,"info":88,"trade":91,"comms":86,"composure":88,"stability":88,"focus":88}},
-        {"id":"TeSeS","role":"辅助","age":22,"attrs":{"reaction":79,"preaim":79,"spray":78,"positioning":80,"utility":89,"movement":78,"entry":76,"clutch":79,"info":86,"trade":84,"comms":87,"composure":82,"stability":81,"focus":81}}
+        {"id":"karrigan","role":"指挥","age":36,"attrs":{"reaction":77,"preaim":68,"spray":70,"positioning":79,"utility":83,"movement":75,"entry":70,"clutch":80,"info":93,"trade":77,"comms":91,"composure":83,"stability":80,"focus":81},"value":260},
+        {"id":"kyousuke","role":"步枪手","age":20,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79},"value":280},
+        {"id":"m0NESY","role":"狙击手","age":21,"attrs":{"reaction":97,"preaim":99,"spray":87,"positioning":94,"utility":83,"movement":87,"entry":86,"clutch":90,"info":89,"trade":84,"comms":83,"composure":90,"stability":92,"focus":93},"value":490},
+        {"id":"NiKo","role":"步枪手","age":29,"attrs":{"reaction":90,"preaim":98,"spray":97,"positioning":90,"utility":87,"movement":88,"entry":94,"clutch":91,"info":88,"trade":91,"comms":86,"composure":88,"stability":88,"focus":88},"value":450},
+        {"id":"TeSeS","role":"辅助","age":27,"attrs":{"reaction":79,"preaim":79,"spray":78,"positioning":80,"utility":89,"movement":78,"entry":76,"clutch":79,"info":86,"trade":84,"comms":87,"composure":82,"stability":81,"focus":81},"value":260}
     ],
     "Vitality": [
-        {"id":"apEX","role":"指挥","age":27,"attrs":{"reaction":77,"preaim":76,"spray":76,"positioning":79,"utility":83,"movement":75,"entry":74,"clutch":80,"info":91,"trade":77,"comms":91,"composure":79,"stability":80,"focus":81}},
-        {"id":"flameZ","role":"突破手","age":23,"attrs":{"reaction":91,"preaim":89,"spray":88,"positioning":85,"utility":81,"movement":92,"entry":99,"clutch":82,"info":83,"trade":87,"comms":82,"composure":86,"stability":85,"focus":86}},
-        {"id":"mezii","role":"辅助","age":17,"attrs":{"reaction":80,"preaim":80,"spray":79,"positioning":81,"utility":90,"movement":79,"entry":77,"clutch":80,"info":87,"trade":85,"comms":88,"composure":83,"stability":82,"focus":82}},
-        {"id":"ropz","role":"自由人","age":19,"attrs":{"reaction":89,"preaim":91,"spray":88,"positioning":97,"utility":88,"movement":90,"entry":87,"clutch":98,"info":95,"trade":87,"comms":86,"composure":89,"stability":88,"focus":87}},
-        {"id":"ZywOo","role":"狙击手","age":25,"attrs":{"reaction":96,"preaim":99,"spray":92,"positioning":94,"utility":85,"movement":87,"entry":88,"clutch":96,"info":91,"trade":86,"comms":85,"composure":92,"stability":94,"focus":95}}
+        {"id":"apEX","role":"指挥","age":33,"attrs":{"reaction":77,"preaim":76,"spray":76,"positioning":79,"utility":83,"movement":75,"entry":74,"clutch":80,"info":91,"trade":77,"comms":91,"composure":79,"stability":80,"focus":81},"value":280},
+        {"id":"flameZ","role":"突破手","age":23,"attrs":{"reaction":91,"preaim":89,"spray":88,"positioning":85,"utility":81,"movement":92,"entry":99,"clutch":82,"info":83,"trade":87,"comms":82,"composure":86,"stability":85,"focus":86},"value":420},
+        {"id":"mezii","role":"辅助","age":27,"attrs":{"reaction":80,"preaim":80,"spray":79,"positioning":81,"utility":90,"movement":79,"entry":77,"clutch":80,"info":87,"trade":85,"comms":88,"composure":83,"stability":82,"focus":82},"value":300},
+        {"id":"ropz","role":"自由人","age":27,"attrs":{"reaction":89,"preaim":91,"spray":88,"positioning":97,"utility":88,"movement":90,"entry":87,"clutch":98,"info":95,"trade":87,"comms":86,"composure":89,"stability":88,"focus":87},"value":450},
+        {"id":"ZywOo","role":"狙击手","age":25,"attrs":{"reaction":96,"preaim":99,"spray":92,"positioning":94,"utility":85,"movement":87,"entry":88,"clutch":96,"info":91,"trade":86,"comms":85,"composure":92,"stability":94,"focus":95},"value":500}
     ],
     "Natus Vincere": [
-        {"id":"Aleksib","role":"指挥","age":29,"attrs":{"reaction":76,"preaim":70,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":92,"trade":76,"comms":90,"composure":82,"stability":79,"focus":80}},
-        {"id":"b1t","role":"步枪手","age":27,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"iM","role":"步枪手","age":27,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"makazze","role":"步枪手","age":25,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"w0nderful","role":"狙击手","age":20,"attrs":{"reaction":92,"preaim":93,"spray":85,"positioning":90,"utility":81,"movement":85,"entry":84,"clutch":88,"info":87,"trade":82,"comms":81,"composure":88,"stability":90,"focus":91}}
+        {"id":"Aleksib","role":"指挥","age":28,"attrs":{"reaction":76,"preaim":70,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":92,"trade":76,"comms":90,"composure":82,"stability":79,"focus":80},"value":290},
+        {"id":"b1t","role":"步枪手","age":23,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":330},
+        {"id":"iM","role":"步枪手","age":24,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":330},
+        {"id":"makazze","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":250},
+        {"id":"w0nderful","role":"狙击手","age":21,"attrs":{"reaction":92,"preaim":93,"spray":85,"positioning":90,"utility":81,"movement":85,"entry":84,"clutch":88,"info":87,"trade":82,"comms":81,"composure":88,"stability":90,"focus":91},"value":410}
     ],
     "FURIA": [
-        {"id":"FalleN","role":"指挥","age":25,"attrs":{"reaction":77,"preaim":73,"spray":76,"positioning":79,"utility":83,"movement":75,"entry":74,"clutch":80,"info":92,"trade":77,"comms":91,"composure":83,"stability":80,"focus":81}},
-        {"id":"KSCERATO","role":"步枪手","age":20,"attrs":{"reaction":88,"preaim":92,"spray":94,"positioning":92,"utility":85,"movement":86,"entry":89,"clutch":90,"info":86,"trade":89,"comms":84,"composure":86,"stability":86,"focus":86}},
-        {"id":"molodoy","role":"狙击手","age":25,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85}},
-        {"id":"YEKINDAR","role":"突破手","age":22,"attrs":{"reaction":86,"preaim":84,"spray":83,"positioning":77,"utility":76,"movement":87,"entry":94,"clutch":77,"info":78,"trade":82,"comms":77,"composure":78,"stability":80,"focus":81}},
-        {"id":"yuurih","role":"步枪手","age":17,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}}
+        {"id":"FalleN","role":"指挥","age":35,"attrs":{"reaction":77,"preaim":73,"spray":76,"positioning":79,"utility":83,"movement":75,"entry":74,"clutch":80,"info":92,"trade":77,"comms":91,"composure":83,"stability":80,"focus":81},"value":250},
+        {"id":"KSCERATO","role":"步枪手","age":26,"attrs":{"reaction":88,"preaim":92,"spray":94,"positioning":92,"utility":85,"movement":86,"entry":89,"clutch":90,"info":86,"trade":89,"comms":84,"composure":86,"stability":86,"focus":86},"value":420},
+        {"id":"molodoy","role":"狙击手","age":20,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85},"value":300},
+        {"id":"YEKINDAR","role":"突破手","age":27,"attrs":{"reaction":86,"preaim":84,"spray":83,"positioning":77,"utility":76,"movement":87,"entry":94,"clutch":77,"info":78,"trade":82,"comms":77,"composure":78,"stability":80,"focus":81},"value":320},
+        {"id":"yuurih","role":"步枪手","age":26,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":320}
     ],
     "MOUZ": [
-        {"id":"jL","role":"步枪手","age":20,"attrs":{"reaction":84,"preaim":88,"spray":87,"positioning":84,"utility":81,"movement":82,"entry":85,"clutch":82,"info":82,"trade":85,"comms":80,"composure":82,"stability":82,"focus":82}},
-        {"id":"Spinx","role":"步枪手","age":20,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"torzsi","role":"狙击手","age":23,"attrs":{"reaction":89,"preaim":94,"spray":82,"positioning":87,"utility":78,"movement":82,"entry":81,"clutch":85,"info":84,"trade":79,"comms":78,"composure":85,"stability":90,"focus":88}},
-        {"id":"xelex","role":"步枪手","age":19,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"xertioN","role":"突破手","age":28,"attrs":{"reaction":88,"preaim":86,"spray":85,"positioning":82,"utility":78,"movement":89,"entry":95,"clutch":79,"info":80,"trade":84,"comms":79,"composure":83,"stability":82,"focus":83}}
+        {"id":"jL","role":"步枪手","age":25,"attrs":{"reaction":84,"preaim":88,"spray":87,"positioning":84,"utility":81,"movement":82,"entry":85,"clutch":82,"info":82,"trade":85,"comms":80,"composure":82,"stability":82,"focus":82},"value":340},
+        {"id":"Spinx","role":"步枪手","age":24,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":360},
+        {"id":"torzsi","role":"狙击手","age":24,"attrs":{"reaction":89,"preaim":94,"spray":82,"positioning":87,"utility":78,"movement":82,"entry":81,"clutch":85,"info":84,"trade":79,"comms":78,"composure":85,"stability":90,"focus":88},"value":370},
+        {"id":"xelex","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"xertioN","role":"突破手","age":22,"attrs":{"reaction":88,"preaim":86,"spray":85,"positioning":82,"utility":78,"movement":89,"entry":95,"clutch":79,"info":80,"trade":84,"comms":79,"composure":83,"stability":82,"focus":83},"value":370}
     ],
     "Legacy": [
-        {"id":"arT","role":"指挥","age":24,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":74,"movement":73,"entry":73,"clutch":75,"info":86,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76}},
-        {"id":"dumau","role":"步枪手","age":22,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"latto","role":"步枪手","age":24,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"n1ssim","role":"步枪手","age":25,"attrs":{"reaction":76,"preaim":80,"spray":79,"positioning":76,"utility":73,"movement":74,"entry":77,"clutch":74,"info":74,"trade":77,"comms":72,"composure":74,"stability":74,"focus":74}},
-        {"id":"saadzin","role":"步枪手","age":27,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}}
+        {"id":"arT","role":"指挥","age":31,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":74,"movement":73,"entry":73,"clutch":75,"info":86,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76},"value":250},
+        {"id":"dumau","role":"步枪手","age":28,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273},
+        {"id":"latto","role":"步枪手","age":26,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"n1ssim","role":"步枪手","age":22,"attrs":{"reaction":76,"preaim":80,"spray":79,"positioning":76,"utility":73,"movement":74,"entry":77,"clutch":74,"info":74,"trade":77,"comms":72,"composure":74,"stability":74,"focus":74},"value":236},
+        {"id":"saadzin","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211}
     ],
     "Aurora": [
-        {"id":"MAJ3R","role":"指挥","age":17,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78}},
-        {"id":"soulfly","role":"步枪手","age":17,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Wicadia","role":"步枪手","age":28,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":83,"utility":80,"movement":81,"entry":84,"clutch":81,"info":81,"trade":84,"comms":79,"composure":81,"stability":81,"focus":81}},
-        {"id":"woxic","role":"狙击手","age":24,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85}},
-        {"id":"XANTARES","role":"步枪手","age":23,"attrs":{"reaction":87,"preaim":95,"spray":94,"positioning":87,"utility":84,"movement":85,"entry":92,"clutch":85,"info":85,"trade":88,"comms":83,"composure":85,"stability":85,"focus":85}}
+        {"id":"MAJ3R","role":"指挥","age":35,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78},"value":250},
+        {"id":"soulfly","role":"步枪手","age":25,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":232},
+        {"id":"Wicadia","role":"步枪手","age":22,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":83,"utility":80,"movement":81,"entry":84,"clutch":81,"info":81,"trade":84,"comms":79,"composure":81,"stability":81,"focus":81},"value":300},
+        {"id":"woxic","role":"狙击手","age":27,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85},"value":280},
+        {"id":"XANTARES","role":"步枪手","age":31,"attrs":{"reaction":87,"preaim":95,"spray":94,"positioning":87,"utility":84,"movement":85,"entry":92,"clutch":85,"info":85,"trade":88,"comms":83,"composure":85,"stability":85,"focus":85},"value":400}
     ],
     "G2": [
-        {"id":"HeavyGod","role":"步枪手","age":20,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":83,"utility":80,"movement":81,"entry":84,"clutch":81,"info":81,"trade":84,"comms":79,"composure":81,"stability":81,"focus":81}},
-        {"id":"huNter-","role":"指挥","age":18,"attrs":{"reaction":78,"preaim":77,"spray":77,"positioning":80,"utility":84,"movement":76,"entry":75,"clutch":81,"info":89,"trade":78,"comms":88,"composure":84,"stability":81,"focus":82}},
-        {"id":"MATYS","role":"步枪手","age":26,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"NertZ","role":"步枪手","age":28,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"SunPayus","role":"狙击手","age":21,"attrs":{"reaction":88,"preaim":89,"spray":81,"positioning":86,"utility":77,"movement":81,"entry":80,"clutch":84,"info":83,"trade":78,"comms":77,"composure":84,"stability":86,"focus":87}}
+        {"id":"HeavyGod","role":"步枪手","age":23,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":83,"utility":80,"movement":81,"entry":84,"clutch":81,"info":81,"trade":84,"comms":79,"composure":81,"stability":81,"focus":81},"value":320},
+        {"id":"huNter-","role":"指挥","age":30,"attrs":{"reaction":78,"preaim":77,"spray":77,"positioning":80,"utility":84,"movement":76,"entry":75,"clutch":81,"info":89,"trade":78,"comms":88,"composure":84,"stability":81,"focus":82},"value":320},
+        {"id":"MATYS","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"NertZ","role":"步枪手","age":26,"attrs":{"reaction":85,"preaim":89,"spray":88,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":340},
+        {"id":"SunPayus","role":"狙击手","age":26,"attrs":{"reaction":88,"preaim":89,"spray":81,"positioning":86,"utility":77,"movement":81,"entry":80,"clutch":84,"info":83,"trade":78,"comms":77,"composure":84,"stability":86,"focus":87},"value":350}
     ],
     "BetBoom": [
-        {"id":"Boombl4","role":"指挥","age":22,"attrs":{"reaction":76,"preaim":75,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":87,"trade":76,"comms":86,"composure":82,"stability":79,"focus":80}},
-        {"id":"d1Ledez","role":"步枪手","age":26,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"FL4MUS","role":"步枪手","age":20,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Magnojez","role":"步枪手","age":20,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"zorte","role":"狙击手","age":28,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85}}
+        {"id":"Boombl4","role":"指挥","age":27,"attrs":{"reaction":76,"preaim":75,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":87,"trade":76,"comms":86,"composure":82,"stability":79,"focus":80},"value":280},
+        {"id":"d1Ledez","role":"步枪手","age":23,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273},
+        {"id":"FL4MUS","role":"步枪手","age":22,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273},
+        {"id":"Magnojez","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"zorte","role":"狙击手","age":28,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85},"value":300}
     ],
     "FUT": [
-        {"id":"cmtry","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"dem0n","role":"步枪手","age":24,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"dziugss","role":"步枪手","age":24,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"Krabeni","role":"步枪手","age":17,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"lauNX","role":"步枪手","age":20,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}}
+        {"id":"cmtry","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"dem0n","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"dziugss","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"Krabeni","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"lauNX","role":"步枪手","age":24,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248}
     ],
     "9z": [
-        {"id":"dgt","role":"步枪手","age":19,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"HUASOPEEK","role":"步枪手","age":29,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"luchov","role":"步枪手","age":29,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"max","role":"指挥","age":25,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78}},
-        {"id":"meyern","role":"狙击手","age":24,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83}}
+        {"id":"dgt","role":"步枪手","age":24,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"HUASOPEEK","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":123},
+        {"id":"luchov","role":"步枪手","age":23,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":123},
+        {"id":"max","role":"指挥","age":24,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78},"value":240},
+        {"id":"meyern","role":"狙击手","age":27,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83},"value":240}
     ],
     "The MongolZ": [
-        {"id":"910","role":"狙击手","age":23,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85}},
-        {"id":"bLitz","role":"指挥","age":27,"attrs":{"reaction":76,"preaim":75,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":91,"trade":76,"comms":89,"composure":82,"stability":79,"focus":80}},
-        {"id":"cobrazera","role":"步枪手","age":23,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"mzinho","role":"突破手","age":20,"attrs":{"reaction":88,"preaim":86,"spray":85,"positioning":82,"utility":78,"movement":89,"entry":95,"clutch":79,"info":80,"trade":84,"comms":79,"composure":83,"stability":82,"focus":83}},
-        {"id":"Techno","role":"步枪手","age":22,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}}
+        {"id":"910","role":"狙击手","age":22,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85},"value":320},
+        {"id":"bLitz","role":"指挥","age":25,"attrs":{"reaction":76,"preaim":75,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":91,"trade":76,"comms":89,"composure":82,"stability":79,"focus":80},"value":280},
+        {"id":"cobrazera","role":"步枪手","age":23,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"mzinho","role":"突破手","age":20,"attrs":{"reaction":88,"preaim":86,"spray":85,"positioning":82,"utility":78,"movement":89,"entry":95,"clutch":79,"info":80,"trade":84,"comms":79,"composure":83,"stability":82,"focus":83},"value":320},
+        {"id":"Techno","role":"步枪手","age":22,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273}
     ],
     "B8": [
-        {"id":"alex666","role":"狙击手","age":19,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81}},
-        {"id":"esenthial","role":"步枪手","age":24,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"kensizor","role":"步枪手","age":18,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"npl","role":"步枪手","age":28,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"s1zzi","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"alex666","role":"狙击手","age":22,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81},"value":232},
+        {"id":"esenthial","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"kensizor","role":"步枪手","age":20,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"npl","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":191},
+        {"id":"s1zzi","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "Astralis": [
-        {"id":"HooXi","role":"指挥","age":25,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78}},
-        {"id":"jabbi","role":"突破手","age":17,"attrs":{"reaction":86,"preaim":84,"spray":83,"positioning":80,"utility":76,"movement":84,"entry":89,"clutch":77,"info":78,"trade":82,"comms":77,"composure":81,"stability":80,"focus":81}},
-        {"id":"phzy","role":"狙击手","age":20,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85}},
-        {"id":"ryu","role":"步枪手","age":26,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"Staehr","role":"步枪手","age":17,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79}}
+        {"id":"HooXi","role":"指挥","age":31,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78},"value":280},
+        {"id":"jabbi","role":"突破手","age":24,"attrs":{"reaction":86,"preaim":84,"spray":83,"positioning":80,"utility":76,"movement":84,"entry":89,"clutch":77,"info":78,"trade":82,"comms":77,"composure":81,"stability":80,"focus":81},"value":320},
+        {"id":"phzy","role":"狙击手","age":23,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85},"value":330},
+        {"id":"ryu","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"Staehr","role":"步枪手","age":23,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79},"value":320}
     ],
     "GamerLegion": [
-        {"id":"hypex","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"PR","role":"步枪手","age":23,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"REZ","role":"步枪手","age":22,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Snax","role":"指挥","age":18,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":81,"movement":70,"entry":69,"clutch":75,"info":87,"trade":72,"comms":85,"composure":78,"stability":75,"focus":76}},
-        {"id":"Tauson","role":"狙击手","age":17,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81}}
+        {"id":"hypex","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"PR","role":"步枪手","age":23,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"REZ","role":"步枪手","age":27,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":300},
+        {"id":"Snax","role":"指挥","age":33,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":81,"movement":70,"entry":69,"clutch":75,"info":87,"trade":72,"comms":85,"composure":78,"stability":75,"focus":76},"value":250},
+        {"id":"Tauson","role":"狙击手","age":22,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81},"value":232}
     ],
     "Monte": [
-        {"id":"afro","role":"狙击手","age":29,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83}},
-        {"id":"AZUWU","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Bymas","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Gizmy","role":"步枪手","age":26,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Rainwaker","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}}
+        {"id":"afro","role":"狙击手","age":22,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83},"value":250},
+        {"id":"AZUWU","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"Bymas","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273},
+        {"id":"Gizmy","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"Rainwaker","role":"步枪手","age":25,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273}
     ],
     "MIBR": [
-        {"id":"brnz4n","role":"步枪手","age":17,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"insani","role":"步枪手","age":28,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"kl1m","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"LNZ","role":"狙击手","age":22,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83}},
-        {"id":"venomzera","role":"步枪手","age":25,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}}
+        {"id":"brnz4n","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":232},
+        {"id":"insani","role":"步枪手","age":25,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":191},
+        {"id":"kl1m","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"LNZ","role":"狙击手","age":22,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83},"value":260},
+        {"id":"venomzera","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248}
     ],
     "PARIVISION": [
-        {"id":"BELCHONOKK","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"Jame","role":"指挥","age":24,"attrs":{"reaction":78,"preaim":77,"spray":77,"positioning":84,"utility":84,"movement":76,"entry":75,"clutch":84,"info":93,"trade":78,"comms":88,"composure":84,"stability":81,"focus":82}},
-        {"id":"nota","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"xiELO","role":"步枪手","age":17,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"zweih","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}}
+        {"id":"BELCHONOKK","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"Jame","role":"指挥","age":27,"attrs":{"reaction":78,"preaim":77,"spray":77,"positioning":84,"utility":84,"movement":76,"entry":75,"clutch":84,"info":93,"trade":78,"comms":88,"composure":84,"stability":81,"focus":82},"value":300},
+        {"id":"nota","role":"步枪手","age":20,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"xiELO","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"zweih","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273}
     ],
     "magic": [
-        {"id":"AW","role":"步枪手","age":17,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"MaSvAl","role":"步枪手","age":29,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"mo0N","role":"狙击手","age":19,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81}},
-        {"id":"sFade8","role":"指挥","age":24,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74}},
-        {"id":"tenzy","role":"步枪手","age":26,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"AW","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"MaSvAl","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":123},
+        {"id":"mo0N","role":"狙击手","age":23,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81},"value":232},
+        {"id":"sFade8","role":"指挥","age":21,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74},"value":224},
+        {"id":"tenzy","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "paiN": [
-        {"id":"biguzera","role":"指挥","age":21,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78}},
-        {"id":"piriajr","role":"步枪手","age":24,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"saffee","role":"步枪手","age":27,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"snow","role":"狙击手","age":23,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83}},
-        {"id":"vsm","role":"步枪手","age":27,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"biguzera","role":"指挥","age":27,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78},"value":273},
+        {"id":"piriajr","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"saffee","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":240},
+        {"id":"snow","role":"狙击手","age":21,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83},"value":260},
+        {"id":"vsm","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191}
     ],
     "TYLOO": [
-        {"id":"JamYoung","role":"步枪手","age":21,"attrs":{"reaction":81,"preaim":89,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":85,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79}},
-        {"id":"Jee","role":"狙击手","age":21,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83}},
-        {"id":"Mercury","role":"步枪手","age":29,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Moseyuh","role":"步枪手","age":23,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Zero","role":"步枪手","age":27,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}}
+        {"id":"JamYoung","role":"步枪手","age":24,"attrs":{"reaction":81,"preaim":89,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":85,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79},"value":260},
+        {"id":"Jee","role":"狙击手","age":21,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83},"value":260},
+        {"id":"Mercury","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":150},
+        {"id":"Moseyuh","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273},
+        {"id":"Zero","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211}
     ],
     "FaZe": [
-        {"id":"broky","role":"狙击手","age":21,"attrs":{"reaction":88,"preaim":89,"spray":81,"positioning":89,"utility":77,"movement":81,"entry":80,"clutch":87,"info":83,"trade":78,"comms":77,"composure":84,"stability":86,"focus":87}},
-        {"id":"frozen","role":"步枪手","age":23,"attrs":{"reaction":85,"preaim":89,"spray":91,"positioning":88,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":90,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"jcobbb","role":"步枪手","age":28,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"Neityu","role":"步枪手","age":26,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"Twistzz","role":"步枪手","age":26,"attrs":{"reaction":85,"preaim":93,"spray":91,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":89,"comms":81,"composure":83,"stability":83,"focus":83}}
+        {"id":"broky","role":"狙击手","age":25,"attrs":{"reaction":88,"preaim":89,"spray":81,"positioning":89,"utility":77,"movement":81,"entry":80,"clutch":87,"info":83,"trade":78,"comms":77,"composure":84,"stability":86,"focus":87},"value":380},
+        {"id":"frozen","role":"步枪手","age":24,"attrs":{"reaction":85,"preaim":89,"spray":91,"positioning":88,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":90,"comms":81,"composure":83,"stability":83,"focus":83},"value":400},
+        {"id":"jcobbb","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":240},
+        {"id":"Neityu","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":240},
+        {"id":"Twistzz","role":"步枪手","age":27,"attrs":{"reaction":85,"preaim":93,"spray":91,"positioning":85,"utility":82,"movement":83,"entry":86,"clutch":83,"info":83,"trade":89,"comms":81,"composure":83,"stability":83,"focus":83},"value":410}
     ],
     "M80": [
-        {"id":"JBa","role":"步枪手","age":22,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Lake","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"s1n","role":"指挥","age":29,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":87,"trade":72,"comms":85,"composure":78,"stability":75,"focus":76}},
-        {"id":"slaxz-","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Swisher","role":"狙击手","age":26,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81}}
+        {"id":"JBa","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":240},
+        {"id":"Lake","role":"步枪手","age":20,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"s1n","role":"指挥","age":23,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":87,"trade":72,"comms":85,"composure":78,"stability":75,"focus":76},"value":240},
+        {"id":"slaxz-","role":"步枪手","age":27,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"Swisher","role":"狙击手","age":22,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81},"value":250}
     ],
     "Inner Circle": [
-        {"id":"cptkurtka023","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Dawy","role":"步枪手","age":19,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"headtr1ck","role":"狙击手","age":20,"attrs":{"reaction":87,"preaim":89,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83}},
-        {"id":"onic","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"zeRRoFIX","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"cptkurtka023","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"Dawy","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"headtr1ck","role":"狙击手","age":23,"attrs":{"reaction":87,"preaim":89,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83},"value":300},
+        {"id":"onic","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"zeRRoFIX","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "BIG": [
-        {"id":"blameF","role":"指挥","age":17,"attrs":{"reaction":76,"preaim":72,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":91,"trade":76,"comms":86,"composure":86,"stability":79,"focus":80}},
-        {"id":"faveN","role":"步枪手","age":17,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"gr1ks","role":"狙击手","age":17,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81}},
-        {"id":"JDC","role":"步枪手","age":17,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"tabseN","role":"步枪手","age":26,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":81,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":80,"composure":79,"stability":82,"focus":79}}
+        {"id":"blameF","role":"指挥","age":30,"attrs":{"reaction":76,"preaim":72,"spray":75,"positioning":78,"utility":82,"movement":74,"entry":73,"clutch":79,"info":91,"trade":76,"comms":86,"composure":86,"stability":79,"focus":80},"value":250},
+        {"id":"faveN","role":"步枪手","age":27,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":232},
+        {"id":"gr1ks","role":"狙击手","age":25,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81},"value":232},
+        {"id":"JDC","role":"步枪手","age":23,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"tabseN","role":"步枪手","age":31,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":81,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":80,"composure":79,"stability":82,"focus":79},"value":250}
     ],
     "Alliance": [
-        {"id":"avid","role":"步枪手","age":17,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"bobeksde","role":"步枪手","age":18,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"eraa","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"twist","role":"指挥","age":18,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78}},
-        {"id":"upE","role":"步枪手","age":27,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"avid","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"bobeksde","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"eraa","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"twist","role":"指挥","age":27,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78},"value":232},
+        {"id":"upE","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191}
     ],
     "Ninjas in Pyjamas": [
-        {"id":"cairne","role":"步枪手","age":19,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"sjuush","role":"步枪手","age":18,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"Snappi","role":"指挥","age":27,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78}},
-        {"id":"stavn","role":"步枪手","age":27,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":86,"utility":80,"movement":81,"entry":84,"clutch":84,"info":81,"trade":87,"comms":79,"composure":81,"stability":81,"focus":81}},
-        {"id":"xKacpersky","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"cairne","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"sjuush","role":"步枪手","age":27,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"Snappi","role":"指挥","age":33,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78},"value":232},
+        {"id":"stavn","role":"步枪手","age":24,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":86,"utility":80,"movement":81,"entry":84,"clutch":84,"info":81,"trade":87,"comms":79,"composure":81,"stability":81,"focus":81},"value":350},
+        {"id":"xKacpersky","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "Lynn Vision": [
-        {"id":"C4LLM3SU3","role":"步枪手","age":28,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"EmiliaQAQ","role":"步枪手","age":29,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"Starry","role":"狙击手","age":26,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81}},
-        {"id":"Westmelon","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"z4KR","role":"步枪手","age":23,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"C4LLM3SU3","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":157},
+        {"id":"EmiliaQAQ","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":111},
+        {"id":"Starry","role":"狙击手","age":23,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81},"value":240},
+        {"id":"Westmelon","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"z4KR","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "Wildcard": [
-        {"id":"Cxzi","role":"步枪手","age":24,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"HexT","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"mhL","role":"步枪手","age":27,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"nEMANHA","role":"步枪手","age":25,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"reck","role":"指挥","age":21,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76}}
+        {"id":"Cxzi","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"HexT","role":"步枪手","age":23,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273},
+        {"id":"mhL","role":"步枪手","age":24,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"nEMANHA","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"reck","role":"指挥","age":24,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76},"value":248}
     ],
     "Sharks": [
-        {"id":"doc","role":"步枪手","age":18,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"gafolo","role":"步枪手","age":18,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"koala","role":"指挥","age":19,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74}},
-        {"id":"maxxkor","role":"步枪手","age":25,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"rdnzao","role":"狙击手","age":20,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79}}
+        {"id":"doc","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":172},
+        {"id":"gafolo","role":"步枪手","age":22,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":172},
+        {"id":"koala","role":"指挥","age":24,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74},"value":191},
+        {"id":"maxxkor","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"rdnzao","role":"狙击手","age":22,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79},"value":248}
     ],
     "Nuclear TigeRES": [
-        {"id":"ayuki","role":"步枪手","age":23,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"flouzer","role":"步枪手","age":19,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"m1QUSE","role":"步枪手","age":25,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"senka","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"z1k4","role":"步枪手","age":19,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"ayuki","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"flouzer","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":172},
+        {"id":"m1QUSE","role":"步枪手","age":20,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"senka","role":"步枪手","age":22,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"z1k4","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191}
     ],
     "3DMAX": [
-        {"id":"Ex3rcice","role":"步枪手","age":27,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"Graviti","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Lucky","role":"指挥","age":26,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76}},
-        {"id":"Maka","role":"狙击手","age":27,"attrs":{"reaction":84,"preaim":89,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":85,"focus":83}},
-        {"id":"misutaaa","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}}
+        {"id":"Ex3rcice","role":"步枪手","age":24,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"Graviti","role":"步枪手","age":29,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"Lucky","role":"指挥","age":27,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76},"value":248},
+        {"id":"Maka","role":"狙击手","age":24,"attrs":{"reaction":84,"preaim":89,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":85,"focus":83},"value":290},
+        {"id":"misutaaa","role":"步枪手","age":27,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":273}
     ],
     "HOTU": [
-        {"id":"dwushka","role":"步枪手","age":28,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"frontales","role":"狙击手","age":18,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79}},
-        {"id":"kade0","role":"步枪手","age":18,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"mizu","role":"步枪手","age":28,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"n0rb3r7","role":"步枪手","age":19,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}}
+        {"id":"dwushka","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":141},
+        {"id":"frontales","role":"狙击手","age":23,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79},"value":211},
+        {"id":"kade0","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":172},
+        {"id":"mizu","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":157},
+        {"id":"n0rb3r7","role":"步枪手","age":27,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211}
     ],
     "INFINITE": [
-        {"id":"Blytz","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Dytor","role":"步枪手","age":28,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"kreaz","role":"步枪手","age":18,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"mhN1","role":"步枪手","age":22,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"sl3nd","role":"步枪手","age":19,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}}
+        {"id":"Blytz","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"Dytor","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":157},
+        {"id":"kreaz","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":172},
+        {"id":"mhN1","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"sl3nd","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":172}
     ],
     "Nemesis": [
-        {"id":"mag1k3Y","role":"指挥","age":29,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74}},
-        {"id":"r3salt","role":"步枪手","age":22,"attrs":{"reaction":79,"preaim":87,"spray":85,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"Sdaim","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"SELLTER","role":"步枪手","age":25,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"tex1y","role":"步枪手","age":26,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}}
+        {"id":"mag1k3Y","role":"指挥","age":22,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74},"value":123},
+        {"id":"r3salt","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":87,"spray":85,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":250},
+        {"id":"Sdaim","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"SELLTER","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"tex1y","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202}
     ],
     "TDK": [
-        {"id":"ArtFr0st","role":"步枪手","age":17,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79}},
-        {"id":"Ax1Le","role":"步枪手","age":27,"attrs":{"reaction":85,"preaim":93,"spray":92,"positioning":85,"utility":82,"movement":83,"entry":89,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"nafany","role":"指挥","age":24,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76}},
-        {"id":"sugaR","role":"步枪手","age":19,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"Xant3r","role":"狙击手","age":29,"attrs":{"reaction":78,"preaim":79,"spray":71,"positioning":76,"utility":67,"movement":71,"entry":70,"clutch":74,"info":73,"trade":68,"comms":67,"composure":74,"stability":76,"focus":77}}
+        {"id":"ArtFr0st","role":"步枪手","age":23,"attrs":{"reaction":81,"preaim":85,"spray":84,"positioning":81,"utility":78,"movement":79,"entry":82,"clutch":79,"info":79,"trade":82,"comms":77,"composure":79,"stability":79,"focus":79},"value":254},
+        {"id":"Ax1Le","role":"步枪手","age":26,"attrs":{"reaction":85,"preaim":93,"spray":92,"positioning":85,"utility":82,"movement":83,"entry":89,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":330},
+        {"id":"nafany","role":"指挥","age":26,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76},"value":248},
+        {"id":"sugaR","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211},
+        {"id":"Xant3r","role":"狙击手","age":22,"attrs":{"reaction":78,"preaim":79,"spray":71,"positioning":76,"utility":67,"movement":71,"entry":70,"clutch":74,"info":73,"trade":68,"comms":67,"composure":74,"stability":76,"focus":77},"value":123}
     ],
     "HEROIC": [
-        {"id":"Chr1zN","role":"步枪手","age":19,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"nilo","role":"步枪手","age":27,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"susp","role":"步枪手","age":23,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"xfl0ud","role":"狙击手","age":19,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81}},
-        {"id":"yxngstxr","role":"步枪手","age":20,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}}
+        {"id":"Chr1zN","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"nilo","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"susp","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"xfl0ud","role":"狙击手","age":23,"attrs":{"reaction":82,"preaim":83,"spray":75,"positioning":80,"utility":71,"movement":75,"entry":74,"clutch":78,"info":77,"trade":72,"comms":71,"composure":78,"stability":80,"focus":81},"value":232},
+        {"id":"yxngstxr","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202}
     ],
     "Gentle Mates": [
-        {"id":"alex","role":"指挥","age":21,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78}},
-        {"id":"dav1g","role":"步枪手","age":25,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"MartinezSa","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"mopoz","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"sausol","role":"步枪手","age":20,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}}
+        {"id":"alex","role":"指挥","age":30,"attrs":{"reaction":74,"preaim":73,"spray":73,"positioning":76,"utility":80,"movement":72,"entry":71,"clutch":77,"info":85,"trade":74,"comms":84,"composure":80,"stability":77,"focus":78},"value":273},
+        {"id":"dav1g","role":"步枪手","age":26,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"MartinezSa","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"mopoz","role":"步枪手","age":23,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"sausol","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248}
     ],
     "Echo": [
-        {"id":"Boye","role":"步枪手","age":29,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"IceBerg","role":"步枪手","age":28,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"leakz","role":"步枪手","age":19,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"NickyB","role":"步枪手","age":28,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"salazar","role":"步枪手","age":29,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}}
+        {"id":"Boye","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":123},
+        {"id":"IceBerg","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":157},
+        {"id":"leakz","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"NickyB","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":157},
+        {"id":"salazar","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":111}
     ],
     "EYEBALLERS": [
-        {"id":"bobeksde","role":"步枪手","age":20,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"dex","role":"步枪手","age":24,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"JW","role":"狙击手","age":29,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83}},
-        {"id":"maxster","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Ro1f","role":"步枪手","age":25,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}}
+        {"id":"bobeksde","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"dex","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"JW","role":"狙击手","age":31,"attrs":{"reaction":84,"preaim":85,"spray":77,"positioning":82,"utility":73,"movement":77,"entry":76,"clutch":80,"info":79,"trade":74,"comms":73,"composure":80,"stability":82,"focus":83},"value":164},
+        {"id":"maxster","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"Ro1f","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202}
     ],
     "100 Thieves": [
-        {"id":"Ag1l","role":"步枪手","age":27,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"device","role":"狙击手","age":25,"attrs":{"reaction":90,"preaim":91,"spray":83,"positioning":92,"utility":79,"movement":83,"entry":82,"clutch":90,"info":85,"trade":80,"comms":79,"composure":86,"stability":91,"focus":89}},
-        {"id":"poiii","role":"步枪手","age":29,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"rain","role":"步枪手","age":29,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":83,"utility":80,"movement":84,"entry":88,"clutch":81,"info":81,"trade":84,"comms":79,"composure":84,"stability":81,"focus":81}},
-        {"id":"sirah","role":"步枪手","age":24,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"Ag1l","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"device","role":"狙击手","age":30,"attrs":{"reaction":90,"preaim":91,"spray":83,"positioning":92,"utility":79,"movement":83,"entry":82,"clutch":90,"info":85,"trade":80,"comms":79,"composure":86,"stability":91,"focus":89},"value":440},
+        {"id":"poiii","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":123},
+        {"id":"rain","role":"步枪手","age":31,"attrs":{"reaction":83,"preaim":87,"spray":86,"positioning":83,"utility":80,"movement":84,"entry":88,"clutch":81,"info":81,"trade":84,"comms":79,"composure":84,"stability":81,"focus":81},"value":380},
+        {"id":"sirah","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "Walczaki": [
-        {"id":"bajmi","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"moonwalk","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"olimp","role":"狙击手","age":26,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79}},
-        {"id":"SaMey","role":"步枪手","age":29,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"sk1tt","role":"指挥","age":27,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74}}
+        {"id":"bajmi","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"moonwalk","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"olimp","role":"狙击手","age":22,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79},"value":248},
+        {"id":"SaMey","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":123},
+        {"id":"sk1tt","role":"指挥","age":22,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74},"value":240}
     ],
     "Liquid": [
-        {"id":"EliGE","role":"步枪手","age":27,"attrs":{"reaction":85,"preaim":92,"spray":92,"positioning":85,"utility":82,"movement":83,"entry":89,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"malbsMd","role":"突破手","age":22,"attrs":{"reaction":88,"preaim":86,"spray":85,"positioning":82,"utility":78,"movement":89,"entry":95,"clutch":79,"info":80,"trade":84,"comms":79,"composure":83,"stability":82,"focus":83}},
-        {"id":"NAF","role":"步枪手","age":24,"attrs":{"reaction":85,"preaim":89,"spray":91,"positioning":89,"utility":82,"movement":83,"entry":86,"clutch":86,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83}},
-        {"id":"siuhy","role":"指挥","age":28,"attrs":{"reaction":78,"preaim":77,"spray":77,"positioning":80,"utility":84,"movement":76,"entry":75,"clutch":81,"info":93,"trade":78,"comms":91,"composure":84,"stability":81,"focus":82}},
-        {"id":"ultimate","role":"狙击手","age":28,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85}}
+        {"id":"EliGE","role":"步枪手","age":28,"attrs":{"reaction":85,"preaim":92,"spray":92,"positioning":85,"utility":82,"movement":83,"entry":89,"clutch":83,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":400},
+        {"id":"malbsMd","role":"突破手","age":24,"attrs":{"reaction":88,"preaim":86,"spray":85,"positioning":82,"utility":78,"movement":89,"entry":95,"clutch":79,"info":80,"trade":84,"comms":79,"composure":83,"stability":82,"focus":83},"value":400},
+        {"id":"NAF","role":"步枪手","age":28,"attrs":{"reaction":85,"preaim":89,"spray":91,"positioning":89,"utility":82,"movement":83,"entry":86,"clutch":86,"info":83,"trade":86,"comms":81,"composure":83,"stability":83,"focus":83},"value":390},
+        {"id":"siuhy","role":"指挥","age":24,"attrs":{"reaction":78,"preaim":77,"spray":77,"positioning":80,"utility":84,"movement":76,"entry":75,"clutch":81,"info":93,"trade":78,"comms":91,"composure":84,"stability":81,"focus":82},"value":380},
+        {"id":"ultimate","role":"狙击手","age":22,"attrs":{"reaction":86,"preaim":87,"spray":79,"positioning":84,"utility":75,"movement":79,"entry":78,"clutch":82,"info":81,"trade":76,"comms":75,"composure":82,"stability":84,"focus":85},"value":370}
     ],
     "FOKUS": [
-        {"id":"Banjo","role":"指挥","age":21,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74}},
-        {"id":"Jorko","role":"狙击手","age":18,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79}},
-        {"id":"Matheos","role":"步枪手","age":17,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"volt","role":"步枪手","age":25,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"ztr","role":"步枪手","age":25,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}}
+        {"id":"Banjo","role":"指挥","age":22,"attrs":{"reaction":70,"preaim":69,"spray":69,"positioning":72,"utility":76,"movement":68,"entry":67,"clutch":73,"info":81,"trade":70,"comms":80,"composure":76,"stability":73,"focus":74},"value":224},
+        {"id":"Jorko","role":"狙击手","age":21,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79},"value":211},
+        {"id":"Matheos","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"volt","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"ztr","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202}
     ],
     "Acend": [
-        {"id":"h4rn","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"KalubeR","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"REDSTAR","role":"突破手","age":23,"attrs":{"reaction":78,"preaim":76,"spray":75,"positioning":72,"utility":68,"movement":76,"entry":81,"clutch":69,"info":70,"trade":74,"comms":69,"composure":73,"stability":72,"focus":73}},
-        {"id":"Skrimo","role":"狙击手","age":26,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79}},
-        {"id":"SPELLAN","role":"步枪手","age":25,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"h4rn","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"KalubeR","role":"步枪手","age":23,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"REDSTAR","role":"突破手","age":22,"attrs":{"reaction":78,"preaim":76,"spray":75,"positioning":72,"utility":68,"movement":76,"entry":81,"clutch":69,"info":70,"trade":74,"comms":69,"composure":73,"stability":72,"focus":73},"value":224},
+        {"id":"Skrimo","role":"狙击手","age":22,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79},"value":248},
+        {"id":"SPELLAN","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "K27": [
-        {"id":"fame","role":"步枪手","age":19,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"kashl1d","role":"步枪手","age":19,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"qw1nk1","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"X5G7V","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"xeedo","role":"步枪手","age":23,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}}
+        {"id":"fame","role":"步枪手","age":24,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":250},
+        {"id":"kashl1d","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"qw1nk1","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"X5G7V","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"xeedo","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202}
     ],
     "Virtus.pro": [
-        {"id":"AquaRS","role":"步枪手","age":17,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"b1st","role":"步枪手","age":21,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}},
-        {"id":"F0R3VER","role":"步枪手","age":28,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"mir","role":"步枪手","age":18,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77}},
-        {"id":"tO0RO","role":"步枪手","age":19,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75}}
+        {"id":"AquaRS","role":"步枪手","age":21,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":232},
+        {"id":"b1st","role":"步枪手","age":23,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":248},
+        {"id":"F0R3VER","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":157},
+        {"id":"mir","role":"步枪手","age":27,"attrs":{"reaction":79,"preaim":83,"spray":82,"positioning":79,"utility":76,"movement":77,"entry":80,"clutch":77,"info":77,"trade":80,"comms":75,"composure":77,"stability":77,"focus":77},"value":250},
+        {"id":"tO0RO","role":"步枪手","age":22,"attrs":{"reaction":77,"preaim":81,"spray":80,"positioning":77,"utility":74,"movement":75,"entry":78,"clutch":75,"info":75,"trade":78,"comms":73,"composure":75,"stability":75,"focus":75},"value":211}
     ],
     "JiJieHao": [
-        {"id":"0SAMAS","role":"步枪手","age":18,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"Bibu","role":"步枪手","age":20,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"CacaNito","role":"狙击手","age":23,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79}},
-        {"id":"m1N1","role":"步枪手","age":18,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71}},
-        {"id":"sinnopsyy","role":"步枪手","age":17,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"0SAMAS","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"Bibu","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":202},
+        {"id":"CacaNito","role":"狙击手","age":24,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79},"value":240},
+        {"id":"m1N1","role":"步枪手","age":21,"attrs":{"reaction":73,"preaim":77,"spray":76,"positioning":73,"utility":70,"movement":71,"entry":74,"clutch":71,"info":71,"trade":74,"comms":69,"composure":71,"stability":71,"focus":71},"value":172},
+        {"id":"sinnopsyy","role":"步枪手","age":22,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191}
     ],
     "SINNERS": [
-        {"id":"beastik","role":"步枪手","age":25,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"kisserek","role":"指挥","age":19,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76}},
-        {"id":"MoDo","role":"步枪手","age":19,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}},
-        {"id":"SHOCK","role":"狙击手","age":23,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79}},
-        {"id":"stressarN","role":"步枪手","age":20,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73}}
+        {"id":"beastik","role":"步枪手","age":24,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224},
+        {"id":"kisserek","role":"指挥","age":28,"attrs":{"reaction":72,"preaim":71,"spray":71,"positioning":74,"utility":78,"movement":70,"entry":69,"clutch":75,"info":83,"trade":72,"comms":82,"composure":78,"stability":75,"focus":76},"value":211},
+        {"id":"MoDo","role":"步枪手","age":24,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":191},
+        {"id":"SHOCK","role":"狙击手","age":24,"attrs":{"reaction":80,"preaim":81,"spray":73,"positioning":78,"utility":69,"movement":73,"entry":72,"clutch":76,"info":75,"trade":70,"comms":69,"composure":76,"stability":78,"focus":79},"value":240},
+        {"id":"stressarN","role":"步枪手","age":21,"attrs":{"reaction":75,"preaim":79,"spray":78,"positioning":75,"utility":72,"movement":73,"entry":76,"clutch":73,"info":73,"trade":76,"comms":71,"composure":73,"stability":73,"focus":73},"value":224}
     ],
     "Quartz Union": [
         {"id":"ui072","role":"辅助","age":22,"attrs":{"reaction":51,"preaim":44,"spray":43,"positioning":47,"utility":50,"movement":41,"entry":48,"clutch":47,"info":51,"trade":49,"comms":51,"composure":40,"stability":46,"focus":45}},

@@ -139,7 +139,7 @@ function npc_retire_chance(age) {
 // 玩家和 NPC 共用选手模型与年龄曲线。yr_* 每年清空，history/honors/rating_all 跨年累计。
 // team 指向队伍对象，队伍 roster 同时持有选手引用；转会必须同步更新两侧关系。
 class Player {
-    constructor(id, role, age, attrs, team, rng, is_human = false, retire_age = null) {
+    constructor(id, role, age, attrs, team, rng, is_human = false, retire_age = null, base_value = null) {
         this.id = id;
         this.role = role;
         this.age = age;
@@ -150,6 +150,11 @@ class Player {
         this._overall = undefined;
         // 展示参考值，不参与实际退役判定。从固定数据库装载时给确定值（开局不消耗随机数）。
         this.retire_age = retire_age !== null ? retire_age : 30 + rng.randint(0, 4);
+        // 数据库人设身价（万）与装载时的参考点；base_value 为 null 表示无档案（补位新人），
+        // 身价退回按总评计算。base_overall / base_age 在装载后由 load_profile 记录。
+        this.base_value = base_value;
+        this.base_overall = null;
+        this.base_age = age;
         this.peak = 0;
 
         // 年度累计：赛季开始清空，赛事名次和个人表现用于年末 Top20。
@@ -199,16 +204,23 @@ class Player {
         return this.team.tier;
     }
 
-    // 身价由总评的 2.3 次幂主导，最近三年 Rating 和荣誉只提供小幅修正。
-    // 26 岁后逐年折价、19 岁前另乘 0.85；最终限制为 1～500 万。
+    // 身价：数据库选手以人设身价（base_value，万）为基准，随总评相对装载时增长/衰退（2.3 次幂），
+    // 装载后年龄每增一岁按 26 岁起的规则折价；最近三年 Rating 和荣誉提供小幅修正。补位新人没有
+    // 人设值，退回按总评与年龄计算。最终限制为 1～500 万。
     value() {
-        const base = (Math.max(this.overall() - 30, 0) / 62) ** 2.3 * 470;
         const recent = this.yr_avgs.slice(-3);
         const perf = recent.length ? (recent.reduce((sum, r) => sum + r, 0) / recent.length - 1) * 35 : 0;
         const honor = Math.min(this.honors.length * 0.6, 10);
-        let age_factor = this.age <= 26 ? 1 : Math.max(0.30, 1 - (this.age - 26) * 0.15);
-        if (this.age <= 19) age_factor *= 0.85;
-        return Math.trunc(clamp((base + perf + honor) * age_factor, 1, 500));
+        if (this.base_value === null) {
+            const base = (Math.max(this.overall() - 30, 0) / 62) ** 2.3 * 470;
+            let age_factor = this.age <= 26 ? 1 : Math.max(0.30, 1 - (this.age - 26) * 0.15);
+            if (this.age <= 19) age_factor *= 0.85;
+            return Math.trunc(clamp((base + perf + honor) * age_factor, 1, 500));
+        }
+        const growth = (this.overall() / this.base_overall) ** 2.3;
+        const extra_age = Math.max(0, this.age - Math.max(this.base_age, 26));
+        const age_factor = Math.max(0.30, 1 - extra_age * 0.15);
+        return Math.trunc(clamp(this.base_value * growth * age_factor + perf + honor, 1, 500));
     }
 
     reset_year() {
@@ -354,8 +366,10 @@ class World {
     // 因此每次开局的初始世界完全一致。年龄与属性由 data.js 的成长曲线在后续赛季继续演变。
     load_profile(team, profile) {
         // retire_age 是展示参考值，不参与退役判定；装载时给确定值以保持开局零随机。
-        const player = new Player(profile.id, profile.role, profile.age, profile.attrs, team, this.rng, false, 32);
+        const player = new Player(profile.id, profile.role, profile.age, profile.attrs, team, this.rng, false, 32, profile.value ?? null);
         apply_attribute_floors(player);
+        // 属性保底会抬高部分基础属性，总评要在保底之后记录，作为身价随总评成长的参考点。
+        if (player.base_value !== null) player.base_overall = player.overall();
         team.roster.push(player);
         this.players.push(player);
         return player;

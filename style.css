@@ -395,9 +395,11 @@ body.in-game #choices-panel.plain{box-shadow:0 10px 30px rgba(16,24,40,.14)}
     .main-head .prog{order:3;flex-basis:100%}
     .top-row{grid-template-columns:1fr}
     .log-item{grid-template-columns:1fr;gap:2px}
-    /* 窄屏单列：右栏不再跟随左栏高度，改给日志卡一个可滚动的固定高度 */
+    /* 窄屏单列：右栏不再跟随左栏高度，改给日志卡一个绝对固定的高度。
+       注意必须同时关掉 flex 伸展（flex:none）——只写 height 会被 flex-basis:0 覆盖，
+       卡片会跟着日志内容一直拉长；overflow:hidden 再兜一层。 */
     body.in-game .main{height:auto;max-height:none}
-    .log-card{height:60vh}
+    .log-card{flex:none;height:58vh;min-height:0;max-height:58vh;overflow:hidden}
     body.in-game #choices-panel{left:14px;right:14px;bottom:14px}
 }
 
