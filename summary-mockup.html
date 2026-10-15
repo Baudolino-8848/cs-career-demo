@@ -81,7 +81,7 @@ body{
 
 /* ---------- 主体 ---------- */
 .ev-body{flex:1;min-height:0;overflow:auto;background:var(--surface)}
-.ev-grid{display:grid;grid-template-columns:266px minmax(0,1fr);gap:16px;padding:18px}
+.ev-grid{display:grid;grid-template-columns:256px minmax(0,1fr);gap:16px;padding:18px}
 
 /* 卡片 */
 .ev-card{
@@ -120,6 +120,11 @@ body{
 .you-place{text-align:center;font-size:12px;color:var(--ink-2)}
 .you-place + .you-place{margin-top:3px}
 .you-place b{color:var(--warn);font-weight:700}
+/* 赛季积分后面的本站变化：括号式小尾巴，正绿负红 */
+.you-place .elo-tag{margin-left:6px;font-family:var(--mono);font-size:11.5px;font-weight:800}
+.you-place .elo-tag.up{color:var(--pos)}
+.you-place .elo-tag.dn{color:var(--neg)}
+.you-place .elo-tag.flat{color:var(--ink-3)}
 .you-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:9px 0}
 .you-num{
   background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);
@@ -158,23 +163,49 @@ body{
 .board li .no.top{color:var(--warn)}
 
 /* ---------- 详细数据 ---------- */
-.detail-grid{display:grid;grid-template-columns:266px minmax(0,1fr);gap:16px;padding:18px}
+/* 左栏 256px：比赛卡多了一行系列赛比分，留够队名不折行的宽度 */
+.detail-grid{display:grid;grid-template-columns:256px minmax(0,1fr);gap:16px;padding:18px}
 .team-card{text-align:center;margin-bottom:12px}
 .team-name{font-size:15px;font-weight:800;color:var(--accent-d);letter-spacing:-.01em}
 .team-place{font-size:11.5px;color:var(--ink-2);margin-top:5px}
 .team-place b{color:var(--warn);font-weight:700}
+/* 本站积分变化：整站累计，与逐场明细的求和一致 */
+.team-elo{
+  display:inline-flex;align-items:baseline;gap:5px;margin-top:7px;
+  font-size:11px;color:var(--ink-3);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:var(--r-pill);padding:3px 11px;
+}
+.team-elo b{font-family:var(--mono);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.team-elo.up b{color:var(--pos)}
+.team-elo.dn b{color:var(--neg)}
+.team-elo.flat b{color:var(--ink-3)}
 .match-list{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);padding:10px}
 .match{
   border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;margin-bottom:8px;
   background:var(--surface);cursor:pointer;transition:border-color .15s ease,background .15s ease;
 }
 .match:last-child{margin-bottom:0}
-.match .stage{font-size:10px;color:var(--ink-3);letter-spacing:.02em;margin-bottom:4px}
+.match .stage{font-size:10px;color:var(--ink-3);letter-spacing:.02em;margin-bottom:3px}
 .match .line{font-size:12px;line-height:1.45;color:var(--ink-2)}
 .match .line b{color:var(--ink);font-weight:700}
+/* 系列赛比分一行：左侧大号比分（我方在前）与胜/负，右侧本场积分变化 */
+.match .foot{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.match .mscore{font-family:var(--mono);font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.match .mscore.win{color:var(--pos)}
+.match .mscore.lose{color:var(--neg)}
+.match .foot .res{font-size:11px}
 .match .res{font-weight:700}
 .match .res.win{color:var(--pos)}
 .match .res.lose{color:var(--neg)}
+/* 本场积分变化：贴右，数字用等宽加粗，正绿负红；以强胜弱拿得少时数值本身就小 */
+.match .elo{
+  margin-left:auto;display:inline-flex;align-items:baseline;gap:4px;
+  font-size:10px;color:var(--ink-3);letter-spacing:.02em;
+}
+.match .elo b{font-family:var(--mono);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.match .elo.up b{color:var(--pos)}
+.match .elo.dn b{color:var(--neg)}
+.match .elo.flat b{color:var(--ink-3)}
 .match.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
 
 .detail-main{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);overflow:hidden}
@@ -185,6 +216,19 @@ body{
 }
 .map-tab.on{background:linear-gradient(135deg,var(--accent),var(--accent-d));border-color:transparent;color:#fff}
 .map-tab.all{min-width:96px}
+
+/* 单图比分板：切到某一图时顶在表格上方，是这一屏最显眼的元素 */
+.map-score{padding:15px 18px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--accent-soft),var(--surface))}
+.map-score .ms-head{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:12px}
+.map-score .ms-map{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
+.map-score .ms-line{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:14px}
+.map-score .ms-side{font-size:13.5px;font-weight:800;letter-spacing:-.01em;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-score .ms-side.right{text-align:right}
+.map-score .ms-nums{display:flex;align-items:baseline;gap:8px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.map-score .ms-nums b{font-size:37px;font-weight:800;line-height:1;color:var(--ink-4)}
+.map-score .ms-nums b.hi{color:var(--pos)}
+.map-score .ms-nums .colon{font-size:23px;font-weight:800;color:var(--ink-4)}
+.map-score .ms-ot{margin-top:11px;text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:var(--warn)}
 
 .stat-wrap{overflow-x:auto;padding:13px}
 .stat-table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
@@ -198,12 +242,12 @@ body{
 }
 .stat-table th{
   font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);
-  text-align:right;padding:7px 10px;background:var(--surface-2);border-bottom:1px solid var(--line-strong);
+  text-align:right;padding:6px 10px;background:var(--surface-2);border-bottom:1px solid var(--line-strong);
   white-space:nowrap;
 }
 .stat-table th:first-child{text-align:left}
 .stat-table td{
-  padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);
+  padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);
   font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap;
 }
 .stat-table td:first-child{
@@ -260,7 +304,8 @@ body{
 <body>
 
 <p class="mock-note">
-  <b>静态设计稿</b> · 赛事总结二级窗口（假数据）。点底部「总览 / 详细数据」切换页面，「详细数据」里左侧比赛与右侧图标签都可点击。
+  <b>静态设计稿</b> · 赛事总结二级窗口（假数据）。点底部「总览 / 详细数据」切换页面，「详细数据」里左侧比赛与右侧图标签都可点击。<br>
+  本次新增：<b>积分变化</b>——每张比赛卡右下角显示这一场的赛季积分结算（<span class="up" style="color:var(--pos);font-weight:800">+43</span> / <span style="color:var(--neg);font-weight:800">-7</span>），左侧顶部与「总览 · 你的表现」显示本站累计。
 </p>
 
 <div class="modal">
@@ -282,12 +327,19 @@ body{
 <script>
 "use strict";
 
-/* ---------- 假数据（结构与 game.js 的 event_summary_payload 对齐） ---------- */
+/* ---------- 假数据（结构与 game.js 的 event_summary_payload 对齐） ----------
+ * 积分字段（本次新增）：
+ *   detail[].elo    这一场系列赛结算出来的赛季积分变化（整数，胜负各结算一次）
+ *   you.season_before  本站开打前的赛季积分；站末积分 = season_before + 各场 elo 之和
+ * 量级参考新机制：赢 = +55 × (1 − 期望)，输 = −45 × 期望，期望由双方实时排名差决定，
+ * 因此单场区间约 −44 ～ +54，排名差越大（以强胜弱）赢得越少，爆冷拿得最多。
+ * 本例的 Plus Sharks 是世界第 45 名的黑马，八强路上以弱胜强击败第 12 名的 BB，所以那一场拿了 +43。
+ */
 const MOCK = {
   event: {name: "IEM 科隆", tier: "S 级", from: "2026/3/3", to: "2026/3/12"},
   result: {champion: "Falcons", runner_up: "Spirit", semi: ["Furia", "Faze Clan"], quarter: ["Plus Sharks", "Mouz"]},
   mvp: {id: "Niko", team: "Falcons", role: "步枪手", rating: 1.25},
-  you: {id: "Rookie", team: "Plus Sharks", placement: "八强", kills: 91, assists: 26, deaths: 62, maps: 8, rating: 1.18, kast: 67, adr: 78},
+  you: {id: "Rookie", team: "Plus Sharks", placement: "八强", kills: 91, assists: 26, deaths: 62, maps: 8, rating: 1.18, kast: 67, adr: 78, season_before: 1148},
   rating_board: [
     {id: "Niko", team: "Falcons", rating: 1.25},
     {id: "donk", team: "Spirit", rating: 1.24},
@@ -314,9 +366,9 @@ const MOCK = {
   ],
   detail: [
     {
-      stage: "小组赛 第一场", opponent: "Falcons", won: false, score: [1, 2],
+      stage: "小组赛 第一场", opponent: "Falcons", won: false, score: [1, 2], elo: -7,
       maps: [
-        {won: false, mine: [
+        {won: false, score: [9, 13], mine: [
           {id: "Rookie", role: "步枪手", k: 18, d: 19, a: 5, adr: 74, kast: 64, rating: 0.98, me: true},
           {id: "kaiR0N", role: "突破手", k: 15, d: 20, a: 4, adr: 68, kast: 61, rating: 0.88},
           {id: "s1mple", role: "狙击手", k: 20, d: 17, a: 3, adr: 82, kast: 70, rating: 1.09},
@@ -329,7 +381,7 @@ const MOCK = {
           {id: "kyxsan", role: "指挥", k: 14, d: 18, a: 7, adr: 65, kast: 71, rating: 0.93},
           {id: "degster", role: "突破手", k: 16, d: 16, a: 3, adr: 73, kast: 67, rating: 0.99},
         ]},
-        {won: false, mine: [
+        {won: false, score: [11, 13], mine: [
           {id: "Rookie", role: "步枪手", k: 21, d: 18, a: 4, adr: 81, kast: 69, rating: 1.12, me: true},
           {id: "kaiR0N", role: "突破手", k: 16, d: 19, a: 3, adr: 70, kast: 63, rating: 0.91},
           {id: "s1mple", role: "狙击手", k: 18, d: 17, a: 2, adr: 78, kast: 68, rating: 1.02},
@@ -342,7 +394,7 @@ const MOCK = {
           {id: "kyxsan", role: "指挥", k: 15, d: 18, a: 8, adr: 67, kast: 72, rating: 0.97},
           {id: "degster", role: "突破手", k: 17, d: 17, a: 4, adr: 75, kast: 69, rating: 1.03},
         ]},
-        {won: false, mine: [
+        {won: true, score: [13, 8], mine: [
           {id: "Rookie", role: "步枪手", k: 19, d: 19, a: 5, adr: 76, kast: 66, rating: 1.03, me: true},
           {id: "kaiR0N", role: "突破手", k: 14, d: 21, a: 3, adr: 63, kast: 60, rating: 0.81},
           {id: "s1mple", role: "狙击手", k: 19, d: 18, a: 2, adr: 80, kast: 67, rating: 1.05},
@@ -358,9 +410,9 @@ const MOCK = {
       ],
     },
     {
-      stage: "小组赛 第二场", opponent: "BB", won: true, score: [2, 0],
+      stage: "小组赛 第二场", opponent: "BB", won: true, score: [2, 0], elo: 43,
       maps: [
-        {won: true, mine: [
+        {won: true, score: [16, 14], overtimes: 1, mine: [
           {id: "Rookie", role: "步枪手", k: 26, d: 13, a: 6, adr: 101, kast: 78, rating: 1.55, me: true},
           {id: "kaiR0N", role: "突破手", k: 19, d: 16, a: 4, adr: 79, kast: 70, rating: 1.10},
           {id: "s1mple", role: "狙击手", k: 22, d: 14, a: 3, adr: 88, kast: 74, rating: 1.30},
@@ -373,7 +425,7 @@ const MOCK = {
           {id: "danistzz", role: "突破手", k: 16, d: 19, a: 3, adr: 69, kast: 62, rating: 0.90},
           {id: "s1ren", role: "补枪手", k: 15, d: 20, a: 5, adr: 65, kast: 61, rating: 0.85},
         ]},
-        {won: true, mine: [
+        {won: true, score: [13, 7], mine: [
           {id: "Rookie", role: "步枪手", k: 24, d: 15, a: 5, adr: 95, kast: 75, rating: 1.41, me: true},
           {id: "kaiR0N", role: "突破手", k: 18, d: 17, a: 4, adr: 76, kast: 68, rating: 1.05},
           {id: "s1mple", role: "狙击手", k: 21, d: 15, a: 3, adr: 85, kast: 72, rating: 1.25},
@@ -389,9 +441,9 @@ const MOCK = {
       ],
     },
     {
-      stage: "淘汰赛 四分之一决赛", opponent: "Faze Clan", won: false, score: [1, 2],
+      stage: "淘汰赛 四分之一决赛", opponent: "Faze Clan", won: false, score: [1, 2], elo: -7,
       maps: [
-        {won: true, mine: [
+        {won: true, score: [13, 11], mine: [
           {id: "Rookie", role: "步枪手", k: 25, d: 16, a: 6, adr: 97, kast: 76, rating: 1.46, me: true},
           {id: "kaiR0N", role: "突破手", k: 18, d: 18, a: 4, adr: 75, kast: 67, rating: 1.03},
           {id: "s1mple", role: "狙击手", k: 22, d: 15, a: 3, adr: 86, kast: 73, rating: 1.28},
@@ -404,7 +456,7 @@ const MOCK = {
           {id: "rain", role: "突破手", k: 15, d: 20, a: 3, adr: 64, kast: 61, rating: 0.86},
           {id: "karrigan", role: "指挥", k: 12, d: 19, a: 6, adr: 57, kast: 66, rating: 0.78},
         ]},
-        {won: false, mine: [
+        {won: false, score: [10, 13], mine: [
           {id: "Rookie", role: "步枪手", k: 17, d: 20, a: 4, adr: 71, kast: 62, rating: 0.92, me: true},
           {id: "kaiR0N", role: "突破手", k: 13, d: 21, a: 3, adr: 60, kast: 58, rating: 0.77},
           {id: "s1mple", role: "狙击手", k: 18, d: 18, a: 2, adr: 77, kast: 66, rating: 1.00},
@@ -417,7 +469,7 @@ const MOCK = {
           {id: "rain", role: "突破手", k: 17, d: 17, a: 3, adr: 72, kast: 67, rating: 1.00},
           {id: "karrigan", role: "指挥", k: 14, d: 17, a: 8, adr: 64, kast: 71, rating: 0.95},
         ]},
-        {won: false, mine: [
+        {won: false, score: [14, 16], overtimes: 1, mine: [
           {id: "Rookie", role: "步枪手", k: 16, d: 20, a: 5, adr: 69, kast: 61, rating: 0.89, me: true},
           {id: "kaiR0N", role: "突破手", k: 12, d: 21, a: 3, adr: 58, kast: 57, rating: 0.74},
           {id: "s1mple", role: "狙击手", k: 17, d: 18, a: 2, adr: 75, kast: 64, rating: 0.97},
@@ -446,6 +498,11 @@ function el(tag, cls, text) {
 const swing = r => (r - 1) * 6.5;
 const fmtSwing = v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 const ratingCls = r => (r >= 1.25 ? "r-hi" : r >= 1.00 ? "r-mid" : "r-low");
+
+// 积分变化：正数带 +，零为中性；配色按涨 / 跌 / 平三档。
+const eloCls = v => (v > 0 ? "up" : v < 0 ? "dn" : "flat");
+const fmtElo = v => (v > 0 ? "+" : "") + v;
+const eloTotal = list => list.reduce((sum, mt) => sum + mt.elo, 0);
 
 const body = document.getElementById("ev-body");
 let view = "overview";
@@ -500,7 +557,12 @@ function renderOverview() {
   place.append(document.createTextNode("队伍表现  "), el("b", "", m.you.placement));
   const rate = el("div", "you-place");
   rate.append(document.createTextNode("Rating  "), el("b", "", m.you.rating.toFixed(2)));
-  c3.append(place, rate);
+  // 赛季积分：站末值 + 本站变化。本站变化等于逐场明细的求和，两处必须对得上。
+  const total = eloTotal(m.detail);
+  const season = el("div", "you-place");
+  season.append(document.createTextNode("赛季积分  "), el("b", "", String(m.you.season_before + total)));
+  season.append(el("span", "elo-tag " + eloCls(total), fmtElo(total)));
+  c3.append(place, rate, season);
   const nums = el("div", "you-nums");
   for (const [label, val] of [["击杀", m.you.kills], ["助攻", m.you.assists], ["死亡", m.you.deaths]]) {
     const b = el("div", "you-num");
@@ -554,6 +616,11 @@ function renderDetail() {
   const teamPlace = el("div", "team-place");
   teamPlace.append(document.createTextNode("队伍表现  "), el("b", "", MOCK.you.placement));
   teamCard.append(teamPlace);
+  // 本站积分变化：整站累计，数值上等于下面每张比赛卡的积分之和。
+  const total = eloTotal(d);
+  const teamElo = el("div", "team-elo " + eloCls(total));
+  teamElo.append(document.createTextNode("本站积分"), el("b", "", fmtElo(total)));
+  teamCard.append(teamElo);
   left.append(teamCard);
 
   const list = el("div", "match-list");
@@ -561,9 +628,18 @@ function renderDetail() {
     const box = el("div", "match" + (i === matchIdx ? " on" : ""));
     box.append(el("div", "stage", mt.stage));
     const line = el("div", "line");
-    line.append(el("b", "", "Plus Sharks"), document.createTextNode(" vs " + mt.opponent + "  "));
-    line.append(el("span", "res " + (mt.won ? "win" : "lose"), mt.won ? "胜" : "负"));
+    line.append(el("b", "", MOCK.you.team), document.createTextNode(" vs " + mt.opponent));
     box.append(line);
+    // 系列赛比分（我方在前）
+    const foot = el("div", "foot");
+    const won = mt.won ? "win" : "lose";
+    foot.append(el("b", "mscore " + won, `${mt.score[0]} - ${mt.score[1]}`));
+    foot.append(el("span", "res " + won, mt.won ? "胜" : "负"));
+    // 本场积分变化：贴右显示，与「本站积分」的求和一致。
+    const elo = el("span", "elo " + eloCls(mt.elo));
+    elo.append(document.createTextNode("积分"), el("b", "", fmtElo(mt.elo)));
+    foot.append(elo);
+    box.append(foot);
     box.addEventListener("click", () => { matchIdx = i; mapIdx = "all"; renderDetail(); });
     list.append(box);
   });
@@ -578,15 +654,39 @@ function renderDetail() {
   tabs.append(mapTab("全场表现", "all", true));
   main.append(tabs);
 
+  // 切到某一图时，比分板顶在表格上方；表格 caption 省掉，避免重复报一遍图号与胜负。
+  if (mapIdx !== "all") main.append(mapScore(mt, mt.maps[mapIdx], mapIdx));
+
   const wrap = el("div", "stat-wrap");
   if (mapIdx === "all") {
     wrap.append(statTable(mt.maps, "全场表现", `BO${mt.maps.length >= 3 ? 3 : mt.maps.length} · ${mt.maps.length} 图`));
   } else {
-    wrap.append(statTable([mt.maps[mapIdx]], `图${"一二三四五"[mapIdx]}`, mt.maps[mapIdx].won ? "本图获胜" : "本图失利"));
+    wrap.append(statTable([mt.maps[mapIdx]], null, null));
   }
   main.append(wrap);
   grid.append(main);
   body.replaceChildren(grid);
+}
+
+// 单图比分板：我方在左、对手在右，中间是大号比分（常规时间 13-x，12-12 后是加时终分）。
+function mapScore(mt, mp, idx) {
+  const box = el("div", "map-score");
+  const head = el("div", "ms-head");
+  head.append(el("span", "ms-map", `图${"一二三四五"[idx]}`));
+  head.append(el("span", "tag " + (mp.won ? "green" : "red"), mp.won ? "本图获胜" : "本图失利"));
+  box.append(head);
+
+  const line = el("div", "ms-line");
+  line.append(el("div", "ms-side", MOCK.you.team));
+  const nums = el("div", "ms-nums");
+  nums.append(el("b", mp.score[0] > mp.score[1] ? "hi" : "", String(mp.score[0])));
+  nums.append(el("span", "colon", ":"));
+  nums.append(el("b", mp.score[1] > mp.score[0] ? "hi" : "", String(mp.score[1])));
+  line.append(nums);
+  line.append(el("div", "ms-side right", mt.opponent));
+  box.append(line);
+  if (mp.overtimes) box.append(el("div", "ms-ot", mp.overtimes > 1 ? `加时 ×${mp.overtimes}（MR3）` : "加时（MR3）"));
+  return box;
 }
 
 function mapTab(label, idx, all) {
@@ -599,9 +699,11 @@ function mapTab(label, idx, all) {
 // 把若干张图的记录按选手聚合：K/D/A 取各图总和，Swing/ADR/KAST/Rating 取全局场均。
 function statTable(maps, caption, tag) {
   const t = el("table", "stat-table");
-  const cap = el("caption");
-  cap.append(document.createTextNode(caption), el("span", "tag", tag));
-  t.append(cap);
+  if (caption) {
+    const cap = el("caption");
+    cap.append(document.createTextNode(caption), el("span", "tag", tag));
+    t.append(cap);
+  }
 
   const thead = el("thead");
   const tr = el("tr");

@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>选手特质 · 静态设计稿</title>
+<style>
+/* ============================================================
+   选手特质系统 —— 静态设计稿（自包含，假数据）
+   配色沿用 style.css 的冷色令牌：浅灰白底 + 单一青色强调。
+   本稿只回答一个问题：特质怎么在界面上被「看见」。
+   四块内容：主界面 / 赛事总结详细数据 / 特质图鉴 / 玩家解锁事件。
+   ============================================================ */
+:root{
+  --bg:#F6F7F9;
+  --surface:#FFFFFF;
+  --surface-2:#F9FAFB;
+  --surface-3:#F1F3F6;
+  --line:#E7EAEF;
+  --line-strong:#D6DBE2;
+
+  --ink:#14171A;
+  --ink-2:#5B6470;
+  --ink-3:#9AA3AF;
+  --ink-4:#C3C9D2;
+
+  --accent:#06B6D4;
+  --accent-d:#0E7490;
+  --accent-soft:#ECFEFF;
+  --accent-line:#A5F3FC;
+
+  --pos:#059669;  --pos-soft:#ECFDF5;
+  --warn:#D97706; --warn-soft:#FFFBEB;
+  --neg:#DC2626;  --neg-soft:#FEF2F2;
+  --violet:#7C3AED; --violet-soft:#F5F3FF;
+
+  --r-xs:6px; --r-sm:9px; --r-md:12px; --r-lg:16px; --r-xl:22px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(16,24,40,.04);
+  --sh-2:0 2px 8px rgba(16,24,40,.06);
+  --sh-3:0 8px 24px rgba(16,24,40,.08);
+  --sh-4:0 24px 64px rgba(16,24,40,.18);
+
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;padding:28px 20px 60px;
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto}
+.sec{margin-top:34px}
+.sec > h2{
+  margin:0 0 4px;font-size:14px;font-weight:800;letter-spacing:-.01em;
+  display:flex;align-items:center;gap:9px;
+}
+.sec > h2 .no{
+  display:inline-grid;place-items:center;width:20px;height:20px;flex:none;
+  border-radius:var(--r-xs);background:var(--accent);color:#fff;font-size:11px;font-weight:800;
+  font-family:var(--mono);
+}
+.sec > p{margin:0 0 14px;font-size:12px;color:var(--ink-3);max-width:88ch}
+.sec > p b{color:var(--ink-2)}
+.mock-note{
+  border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--r-md);
+  padding:14px 16px;box-shadow:var(--sh-1);
+}
+.mock-note h1{margin:0 0 6px;font-size:16px;font-weight:800;letter-spacing:-.01em}
+.mock-note p{margin:0;font-size:12px;color:var(--ink-2);max-width:96ch}
+.mock-note p + p{margin-top:6px}
+.mock-note .k{color:var(--accent-d);font-weight:700}
+
+/* ---------- 特质胶囊：全稿唯一的「新组件」 ---------- */
+.trait{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:600;line-height:1;white-space:nowrap;
+  padding:3px 7px;border-radius:var(--r-pill);
+  background:var(--surface-3);border:1px solid var(--line-strong);color:var(--ink-2);
+}
+.trait::before{
+  content:"";width:5px;height:5px;border-radius:50%;flex:none;
+  background:var(--ink-4);
+}
+/* 招牌特质：每人最多一个，琥珀底 —— 与「荣誉 / 排名」同一色系，但靠描边与圆点区分 */
+.trait.sig{background:var(--warn-soft);border-color:#FDE68A;color:var(--warn);font-weight:700}
+.trait.sig::before{background:var(--warn)}
+/* 反面特质（带代价的短板）：用虚线描边表示「这不是纯好处」 */
+.trait.cost{border-style:dashed;color:var(--ink-3)}
+.trait.dim{opacity:.55}
+.trait.sm{font-size:9px;padding:2px 6px}
+
+/* ============================================================
+   一、主界面
+   ============================================================ */
+.app{display:grid;grid-template-columns:322px minmax(0,1fr);gap:20px;align-items:start}
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:13px 14px;box-shadow:var(--sh-1);
+}
+.card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card-head h3{margin:0;font-size:12px;font-weight:700;letter-spacing:.02em}
+.card-head .hint{margin-left:auto;font-size:10px;color:var(--ink-3)}
+.micro{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.side{display:flex;flex-direction:column;gap:12px}
+
+.player{display:flex;align-items:center;gap:12px}
+.avatar{
+  width:58px;height:58px;flex:none;border-radius:16px;
+  background:linear-gradient(160deg,var(--accent-soft),#F0FDFF);
+  border:1px solid var(--accent-line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.avatar b{font-size:23px;font-weight:800;line-height:1;color:var(--accent-d);font-variant-numeric:tabular-nums}
+.avatar span{font-size:9px;color:var(--ink-3);letter-spacing:.08em;margin-top:2px}
+.player .who{min-width:0;flex:1}
+.player .who .id{font-size:16px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.player .who .team{font-size:11.5px;color:var(--ink-2);margin-top:3px}
+.player .who .team b{color:var(--accent-d)}
+.player .who .value{font-size:11px;color:var(--ink-3);margin-top:2px}
+.player .who .value b{color:var(--warn);font-weight:700}
+
+/* 【新增】风格行：面板里唯一的常驻特质展示位 */
+.style-row{padding:11px 14px 12px}
+.style-row .style-head{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.style-row .style-head .lb{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
+.style-row .style-head .cnt{margin-left:auto;font-size:10px;color:var(--ink-4);font-variant-numeric:tabular-nums}
+.style-list{display:flex;flex-wrap:wrap;gap:6px}
+.style-empty{font-size:11.5px;color:var(--ink-4);line-height:1.5}
+
+.form-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.tag{
+  display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;line-height:1;
+  padding:4px 8px;border-radius:var(--r-pill);background:var(--surface-3);color:var(--ink-2);white-space:nowrap;
+}
+.tag.green{background:var(--pos-soft);color:var(--pos)}
+.tag.amber{background:var(--warn-soft);color:var(--warn)}
+.tag.cyan{background:var(--accent-soft);color:var(--accent-d)}
+.tag.violet{background:var(--violet-soft);color:var(--violet)}
+.form-row .rank{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--warn);font-variant-numeric:tabular-nums}
+
+.attr-group + .attr-group{margin-top:11px}
+.attr-group .micro{display:block;margin-bottom:6px}
+.bar-row{display:flex;align-items:center;gap:9px;padding:2.5px 0}
+.bar-row .lb{width:49px;flex:none;font-size:11.5px;color:var(--ink-2);display:flex;align-items:center;gap:3px;white-space:nowrap}
+.bar-row .lb .core{width:5px;height:5px;border-radius:50%;background:var(--accent);flex:none}
+.bar-row .track{flex:1;height:6px;border-radius:var(--r-pill);background:var(--surface-3);overflow:hidden}
+.bar-row .fill{display:block;height:100%;border-radius:var(--r-pill)}
+.bar-row .fill.t1{background:linear-gradient(90deg,#67E8F9,#0891B2)}
+.bar-row .fill.t2{background:linear-gradient(90deg,#6EE7B7,#059669)}
+.bar-row .fill.t3{background:linear-gradient(90deg,#FDE047,#D97706)}
+.bar-row .vl{width:24px;flex:none;text-align:right;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+
+.season-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3.5px 0}
+.season-row > span:first-child{color:var(--ink-3)}
+.season-row .sc{font-weight:700;color:var(--accent-d);font-variant-numeric:tabular-nums}
+.btn-retire{
+  width:100%;border:1px solid var(--neg);border-radius:var(--r-md);cursor:pointer;
+  background:var(--neg-soft);color:var(--neg);font:inherit;font-size:13px;font-weight:700;padding:11px;
+}
+
+.main{
+  min-width:0;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-lg);
+  box-shadow:var(--sh-3);overflow:hidden;display:flex;flex-direction:column;
+}
+.main-head{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.main-head .brand{font-size:12.5px;font-weight:700;white-space:nowrap}
+.main-head .prog{flex:1;display:flex;align-items:center;gap:9px;min-width:0}
+.main-head .prog .track{flex:1;height:4px;border-radius:var(--r-pill);background:var(--surface-3);overflow:hidden;min-width:40px}
+.main-head .prog .track i{display:block;height:100%;width:54%;border-radius:var(--r-pill);background:linear-gradient(90deg,#22D3EE,var(--accent-d))}
+.main-head .prog .txt{font-size:10.5px;color:var(--ink-3);font-family:var(--mono);white-space:nowrap}
+.chip{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent-d);white-space:nowrap}
+.main-body{padding:18px;display:flex;flex-direction:column;gap:14px}
+.top-row{display:grid;grid-template-columns:minmax(0,1fr) 232px;gap:14px}
+
+/* 队伍成员卡：招牌特质用极窄的一行放在 ID 下面（5 列宽度只够一个词） */
+.members{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.member{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 6px;text-align:center;background:var(--surface-2)}
+.member.me{border-color:var(--accent-line);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+.member .m-id{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member .m-age{font-size:10px;color:var(--ink-3);margin-top:1px}
+.member .m-ovr{font-size:17px;font-weight:800;color:var(--accent-d);font-variant-numeric:tabular-nums;margin-top:3px;line-height:1.1}
+.member .m-ovr small{font-size:9px;color:var(--ink-3);font-weight:600;margin-left:2px}
+/* 成员卡只放得下一个词，因此显示「最显著的特质」：有招牌就显示招牌（琥珀），否则显示第一个习惯（灰）。 */
+.member .m-trait{
+  margin-top:4px;font-size:9px;font-weight:700;line-height:1.25;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:flex;align-items:center;justify-content:center;gap:3px;
+}
+.member .m-trait::before{content:"";width:4px;height:4px;border-radius:50%;background:currentColor;flex:none;opacity:.8}
+.member .m-trait.sig{color:var(--warn)}
+.member .m-trait.none{color:var(--ink-4);font-weight:600}
+.member .m-trait.none::before{display:none}
+.roles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
+.roles span{text-align:center;font-size:10.5px;color:var(--ink-2);background:var(--surface-3);border-radius:var(--r-pill);padding:3px 0}
+
+.next-head{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.next-head .days{margin-left:auto;font-size:10.5px;color:var(--warn);font-weight:700}
+.next-main{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;text-align:center;background:var(--surface-2)}
+.next-main .n-name{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.next-main .n-tier{margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px 6px;font-size:10px;color:var(--ink-2);background:var(--surface)}
+.next-main .n-tier b{color:var(--violet);font-weight:700}
+.next-main .n-qual{margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px 6px;font-size:10px;background:var(--surface);color:var(--ink-3)}
+
+.log-card{display:flex;flex-direction:column}
+.log{display:flex;flex-direction:column}
+.log-item{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;padding:8px 2px}
+.log-item + .log-item{border-top:1px solid var(--line)}
+.log-item .date{font-size:10.5px;color:var(--ink-3);padding-top:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.log-item .lines{min-width:0;font-size:12.5px;line-height:1.62;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:anywhere}
+.log-item.k-match{background:var(--surface-2)}
+.log-item.k-idle .lines{color:var(--ink-3)}
+
+/* 【新增】高光行：左缘一条青色竖线 + 极浅底，只在高阈值时出现，克制 */
+.log-item.k-hl{
+  background:linear-gradient(90deg,var(--accent-soft),rgba(236,254,255,0) 62%);
+  border-left:2px solid var(--accent);padding-left:10px;
+}
+.log-item.k-hl .lines{color:var(--ink)}
+.log-item.k-hl .hl-kicker{
+  display:inline-block;font-size:9px;font-weight:800;letter-spacing:.08em;color:#fff;
+  background:var(--accent);border-radius:var(--r-pill);padding:2px 7px;margin-right:7px;vertical-align:1px;
+}
+.log-item.k-hl b{color:var(--accent-d);font-weight:800}
+.log-item.k-hl .hl-rate{font-family:var(--mono);font-weight:800;color:var(--warn)}
+.log-item.k-hl .hl-why{display:block;margin-top:3px;font-size:11px;color:var(--ink-3)}
+.text-dim{opacity:.6}
+.text-yellow{color:var(--warn)}
+.text-green{color:var(--pos)}
+
+/* ============================================================
+   二、赛事总结 · 详细数据
+   ============================================================ */
+.modal-panel{
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-xl);
+  box-shadow:var(--sh-4);overflow:hidden;
+}
+.ev-head{padding:16px 26px 18px;text-align:center;border-bottom:1px solid var(--line)}
+.ev-head h1{margin:0;font-size:21px;font-weight:800;letter-spacing:-.01em}
+.ev-tier{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:var(--r-pill);margin-bottom:7px;background:var(--accent-soft);color:var(--accent-d)}
+.ev-date{display:inline-block;margin-top:11px;font-size:12px;color:var(--ink-2);border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 16px;background:var(--surface-2)}
+.ev-body{padding:18px;background:var(--surface)}
+.detail-grid{display:grid;grid-template-columns:256px minmax(0,1fr);gap:16px}
+.team-card{text-align:center;margin-bottom:12px}
+.team-name{font-size:15px;font-weight:800;color:var(--accent-d)}
+.team-place{font-size:11.5px;color:var(--ink-2);margin-top:5px}
+.team-place b{color:var(--warn);font-weight:700}
+.match-list{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);padding:10px}
+.match{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;margin-bottom:8px;background:var(--surface)}
+.match:last-child{margin-bottom:0}
+.match .stage{font-size:10px;color:var(--ink-3);margin-bottom:3px}
+.match .line{font-size:12px;color:var(--ink-2)}
+.match .line b{color:var(--ink);font-weight:700}
+.match .foot{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.match .mscore{font-family:var(--mono);font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.match .mscore.win{color:var(--pos)}
+.match .mscore.lose{color:var(--neg)}
+.match .res{font-size:11px;font-weight:700}
+.match .res.win{color:var(--pos)}
+.match .res.lose{color:var(--neg)}
+.match.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+
+.detail-main{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);overflow:hidden}
+.map-tabs{display:flex;gap:8px;padding:11px 13px;border-bottom:1px solid var(--line);background:var(--surface-2);flex-wrap:wrap}
+.map-tab{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:12px;font-weight:600;padding:6px 15px;border-radius:var(--r-sm);cursor:pointer}
+.map-tab.on{background:linear-gradient(135deg,var(--accent),var(--accent-d));border-color:transparent;color:#fff}
+.map-score{padding:15px 18px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--accent-soft),var(--surface))}
+.map-score .ms-head{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:12px}
+.map-score .ms-map{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
+.map-score .ms-line{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:14px}
+.map-score .ms-side{font-size:13.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-score .ms-side.right{text-align:right}
+.map-score .ms-nums{display:flex;align-items:baseline;gap:8px;font-family:var(--mono)}
+.map-score .ms-nums b{font-size:37px;font-weight:800;line-height:1;color:var(--ink-4)}
+.map-score .ms-nums b.hi{color:var(--pos)}
+.map-score .ms-nums .colon{font-size:23px;font-weight:800;color:var(--ink-4)}
+
+.stat-wrap{overflow-x:auto;padding:13px}
+.stat-table{width:100%;border-collapse:collapse;font-size:12px;min-width:640px}
+.stat-table caption{text-align:left;font-size:12px;font-weight:800;color:var(--accent-d);padding:2px 4px 8px}
+.stat-table caption .tag{display:inline-block;margin-left:7px;font-size:9.5px;font-weight:700;background:var(--surface-3);color:var(--ink-2);border-radius:var(--r-pill);padding:2px 8px;vertical-align:1px}
+.stat-table caption .tag.new{background:var(--warn-soft);color:var(--warn)}
+.stat-table th{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);text-align:right;padding:6px 10px;background:var(--surface-2);border-bottom:1px solid var(--line-strong);white-space:nowrap}
+.stat-table th:first-child{text-align:left}
+.stat-table td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.stat-table td:first-child{text-align:left;font-family:var(--sans);font-weight:600;color:var(--ink)}
+.stat-table tr.team-row td{text-align:left;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--ink-2);background:var(--surface-2);border-bottom:1px solid var(--line-strong);padding-top:8px;padding-bottom:8px}
+.stat-table tr.me td{background:var(--accent-soft)}
+.stat-table tr.me td:first-child::before{content:"你";display:inline-block;margin-right:7px;font-size:9.5px;font-weight:700;background:var(--accent);color:#fff;border-radius:var(--r-pill);padding:1px 6px;vertical-align:1px}
+.stat-table .r-hi{color:var(--warn);font-weight:800}
+.stat-table .r-mid{color:var(--pos);font-weight:700}
+.stat-table .role{font-family:var(--sans);font-weight:600;font-size:10.5px;color:var(--violet);background:var(--violet-soft);border-radius:var(--r-pill);padding:1px 7px;margin-left:6px}
+/* 姓名单元格里的特质：紧跟在 ID 后面 */
+.stat-table .nm{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.stat-table .fk-hi{color:var(--warn);font-weight:800}
+
+/* 本场特征：表格下方一行注解，把特质「兑现」成看得见的数字 */
+.map-note{
+  margin:0 13px 13px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--surface-2);padding:10px 12px;
+}
+.map-note .mn-head{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--ink-3);margin-bottom:7px}
+.map-note ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.map-note li{font-size:11.5px;color:var(--ink-2);display:flex;align-items:baseline;gap:8px}
+.map-note li b{color:var(--ink);font-weight:700}
+.map-note li .v{font-family:var(--mono);font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.map-note li .v.hi{color:var(--warn)}
+
+/* ============================================================
+   三、特质图鉴
+   ============================================================ */
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);overflow:hidden}
+.cat-table{width:100%;border-collapse:collapse;font-size:12px}
+.cat-table th{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);text-align:left;padding:9px 12px;background:var(--surface-2);border-bottom:1px solid var(--line-strong);white-space:nowrap}
+.cat-table td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:11.5px;color:var(--ink-2);line-height:1.5}
+.cat-table tr:last-child td{border-bottom:none}
+.cat-table td.t-name{white-space:nowrap}
+.cat-table td.t-kind{white-space:nowrap;font-size:10.5px}
+.cat-table td.t-eff{color:var(--ink-2)}
+.cat-table td.t-eff .n{font-family:var(--mono);font-weight:800;color:var(--accent-d);font-variant-numeric:tabular-nums}
+.cat-table td.t-cost .n{font-family:var(--mono);font-weight:800;color:var(--neg);font-variant-numeric:tabular-nums}
+.cat-table td.t-who{font-size:11px;color:var(--ink-3)}
+.cat-table tr.group td{background:var(--surface-3);font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--ink-2);padding:7px 12px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--ink-3)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+
+/* ============================================================
+   四、玩家解锁招牌特质（可选）
+   ============================================================ */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+#choices-panel{background:var(--surface);border:1px solid #FDE68A;border-radius:var(--r-md);padding:14px;box-shadow:var(--sh-2)}
+#choice-kicker{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--warn);border-radius:var(--r-pill);padding:3px 9px;margin-bottom:8px}
+#question{font-size:13.5px;font-weight:800;color:var(--warn);margin:0 0 6px}
+#choice-desc{margin:0 0 12px;font-size:12px;color:var(--ink-2)}
+#choices{display:grid;gap:8px}
+#choices .opt{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:12px 13px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;box-shadow:var(--sh-1)}
+#choices .opt .idx{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:700;background:var(--surface-3);color:var(--ink-2)}
+#choices .opt .txt{flex:1;line-height:1.45}
+#choices .opt .txt .sub{display:flex;flex-wrap:wrap;gap:8px;margin-top:5px}
+.howto{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;box-shadow:var(--sh-1)}
+.howto h3{margin:0 0 9px;font-size:12.5px;font-weight:700}
+.howto ol{margin:0;padding-left:18px;font-size:12px;color:var(--ink-2);line-height:1.75}
+.howto ol b{color:var(--accent-d)}
+
+@media (max-width:900px){
+  .app,.two{grid-template-columns:1fr}
+  .top-row,.detail-grid{grid-template-columns:1fr}
+  .stat-table{min-width:560px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mock-note">
+    <h1>选手特质系统 · 静态设计稿</h1>
+    <p>本稿只回答一个问题：<b class="k">特质怎么在界面上被看见</b>。机制（4 个计算挂点、可断言偏差、NPC 与玩家共用）不在本稿内，见讨论记录。</p>
+    <p>数据为假数据，设定在<b class="k">生涯中期</b>：自定义选手 yuki 已转入 Spirit，队友是现实明星。特质只标注真实 VRS 明星，所以队友有、你没有。</p>
+    <p>新组件只有一个：<b class="k">特质胶囊</b>。琥珀实心 = 招牌特质（每人最多一个），灰色描边 = 习惯特质，虚线描边 = 带代价的短板。高光日志行与「首杀」列是另外两处新增，分别标在图上。</p>
+  </div>
+
+  <!-- ============ 一、主界面 ============ -->
+  <section class="sec">
+    <h2><span class="no">1</span>主界面：特质出现在三个位置</h2>
+    <p>左栏新增<b>风格行</b>（常驻，列全部特质）；队伍成员卡的 ID 下方多一行特质（5 列宽度只放得下一个词，因此显示<b>最显著的一条</b>：有招牌显示招牌，否则显示第一个习惯）；生涯日志新增<b>高光行</b>（左缘青色竖线，破阈值才出现）。</p>
+    <p style="margin-top:-6px">风格行的<b>空态</b>（开局无特质的自定义选手）为一行灰字：<span style="font-family:var(--mono);font-size:11.5px;color:var(--ink-4)">尚未形成招牌 · 靠表现赢得</span>。左栏展示的是生涯中期、已解锁两个习惯特质后的状态。</p>
+
+    <div class="app">
+      <!-- 左栏 -->
+      <aside class="side">
+        <div class="card">
+          <div class="player">
+            <div class="avatar"><b>84</b><span>总评</span></div>
+            <div class="who">
+              <div class="id">yuki <span class="tag violet">步枪手</span></div>
+              <div class="team">队伍 <b>Spirit</b> · 顶级豪门</div>
+              <div class="value">身价 <b>380 万</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-row">
+            <span style="font-size:11.5px;color:var(--ink-2)">状态</span>
+            <span class="tag green">火热</span>
+            <span style="font-size:10.5px;color:var(--ink-3)">剩余 4 天</span>
+            <span class="rank">世界排名 #12</span>
+          </div>
+        </div>
+
+        <!-- 【新增】风格行 -->
+        <div class="card style-row">
+          <div class="style-head">
+            <span class="lb">风格</span>
+            <span class="cnt">0 / 1 招牌 · 2 习惯</span>
+          </div>
+          <div class="style-list">
+            <span class="trait">爆头机器</span>
+            <span class="trait">大赛软脚</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>十四维属性</h3></div>
+          <div class="attr-group">
+            <span class="micro">基础 · 硬件</span>
+            <div class="bar-row"><span class="lb"><i class="core"></i>反应</span><span class="track"><i class="fill t2" style="width:86%"></i></span><span class="vl">86</span></div>
+            <div class="bar-row"><span class="lb"><i class="core"></i>预瞄</span><span class="track"><i class="fill t3" style="width:92%"></i></span><span class="vl">92</span></div>
+            <div class="bar-row"><span class="lb"><i class="core"></i>压枪</span><span class="track"><i class="fill t2" style="width:88%"></i></span><span class="vl">88</span></div>
+            <div class="bar-row"><span class="lb"><i class="core"></i>定位</span><span class="track"><i class="fill t2" style="width:84%"></i></span><span class="vl">84</span></div>
+            <div class="bar-row"><span class="lb">道具</span><span class="track"><i class="fill t1" style="width:74%"></i></span><span class="vl">74</span></div>
+            <div class="bar-row"><span class="lb"><i class="core"></i>身法</span><span class="track"><i class="fill t1" style="width:82%"></i></span><span class="vl">82</span></div>
+          </div>
+          <div class="attr-group">
+            <span class="micro">表现 · 打成成绩</span>
+            <div class="bar-row"><span class="lb"><i class="core"></i>突破</span><span class="track"><i class="fill t2" style="width:85%"></i></span><span class="vl">85</span></div>
+            <div class="bar-row"><span class="lb">残局</span><span class="track"><i class="fill t1" style="width:78%"></i></span><span class="vl">78</span></div>
+            <div class="bar-row"><span class="lb">信息</span><span class="track"><i class="fill t1" style="width:73%"></i></span><span class="vl">73</span></div>
+            <div class="bar-row"><span class="lb">补枪</span><span class="track"><i class="fill t1" style="width:80%"></i></span><span class="vl">80</span></div>
+            <div class="bar-row"><span class="lb">沟通</span><span class="track"><i class="fill t1" style="width:71%"></i></span><span class="vl">71</span></div>
+            <div class="bar-row"><span class="lb">抗压</span><span class="track"><i class="fill t1" style="width:76%"></i></span><span class="vl">76</span></div>
+            <div class="bar-row"><span class="lb"><i class="core"></i>稳定性</span><span class="track"><i class="fill t2" style="width:83%"></i></span><span class="vl">83</span></div>
+            <div class="bar-row"><span class="lb">专注</span><span class="track"><i class="fill t2" style="width:86%"></i></span><span class="vl">86</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>本赛季</h3></div>
+          <div class="season-row"><span>出战</span><span class="sc">12 站</span></div>
+          <div class="season-row"><span>平均 Rating</span><span class="sc">1.11</span></div>
+          <div class="season-row"><span>K - D</span><span class="sc">3182 - 2610</span></div>
+          <div class="season-row"><span>年度 Top20</span><span class="sc">#9</span></div>
+        </div>
+
+        <button class="btn-retire" type="button">退役</button>
+      </aside>
+
+      <!-- 右栏 -->
+      <main class="main">
+        <header class="main-head">
+          <span class="brand">CS 职业选手模拟器</span>
+          <div class="prog">
+            <span class="track"><i></i></span>
+            <span class="txt">赛季第 189 / 350 天</span>
+          </div>
+          <span class="chip">世界 #12</span>
+        </header>
+
+        <div class="main-body">
+          <div class="top-row">
+            <div class="card">
+              <div class="card-head"><h3>队伍成员</h3><span class="hint" style="font-size:11px">教练 hally</span></div>
+              <div class="members">
+                <div class="member me">
+                  <div class="m-id">yuki</div><div class="m-age">21 岁</div>
+                  <div class="m-ovr">84<small>总评</small></div>
+                  <div class="m-trait">爆头机器</div>
+                </div>
+                <div class="member">
+                  <div class="m-id">donk</div><div class="m-age">19 岁</div>
+                  <div class="m-ovr">96<small>总评</small></div>
+                  <div class="m-trait sig">开局先锋</div>
+                </div>
+                <div class="member">
+                  <div class="m-id">sh1ro</div><div class="m-age">25 岁</div>
+                  <div class="m-ovr">91<small>总评</small></div>
+                  <div class="m-trait sig">AWP 专精</div>
+                </div>
+                <div class="member">
+                  <div class="m-id">zont1x</div><div class="m-age">22 岁</div>
+                  <div class="m-ovr">85<small>总评</small></div>
+                  <div class="m-trait">自由人嗅探</div>
+                </div>
+                <div class="member">
+                  <div class="m-id">magixx</div><div class="m-age">24 岁</div>
+                  <div class="m-ovr">79<small>总评</small></div>
+                  <div class="m-trait none">—</div>
+                </div>
+              </div>
+              <div class="roles">
+                <span>步枪手</span><span>步枪手</span><span>狙击手</span><span>自由人</span><span>辅助</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="next-head"><span>下一场比赛</span><span class="days">18 天</span></div>
+              <div class="next-main">
+                <div class="n-name">IEM 科隆</div>
+                <div class="n-tier">赛事等级：<b>S 级大赛</b></div>
+                <div class="n-qual">资格已锁定 · 引用期 2026/7/6 世界 #14</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card log-card">
+            <div class="card-head"><h3>生涯日志</h3></div>
+            <div class="log">
+              <div class="log-item k-match">
+                <span class="date">2026/9/13</span>
+                <span class="lines">BLAST 伦敦站 小组赛 结束，<b>Spirit</b> 以 3-0 出线进入八强</span>
+              </div>
+
+              <!-- 【新增】高光行 -->
+              <div class="log-item k-hl">
+                <span class="date">2026/9/18</span>
+                <span class="lines"><span class="hl-kicker">高光</span>图2 <b>donk</b> 打出 <span class="hl-rate">31-14 · Rating 1.94</span>，全场最高
+                  <span class="hl-why">开局先锋：首杀 8 次（全场最高）· 单图击杀本届赛事新高</span>
+                </span>
+              </div>
+
+              <div class="log-item k-idle">
+                <span class="date">2026/9/19 – 9/22</span>
+                <span class="lines">无事发生</span>
+              </div>
+
+              <div class="log-item" style="grid-template-columns:96px minmax(0,1fr)">
+                <span class="date">2026/9/23</span>
+                <span class="lines"><span class="text-yellow">【事件】赞助商的签名外设</span> 你选择了「先试试手感」
+                  <span class="text-green">稳定 +1</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- ============ 二、赛事总结 ============ -->
+  <section class="sec">
+    <h2><span class="no">2</span>赛事总结 · 详细数据：特质在数据里兑现</h2>
+    <p>选手名后面直接挂特质胶囊，一眼看出这一行是谁在打什么风格。表格下方新增<b>本场特征</b>，把特质翻译成这一场实际发生的数字。首杀列是本稿里唯一建议新增的数据列（标了「新增」），没有它「开局先锋」这类特质只能看击杀、说不出所以然。</p>
+
+    <div class="modal-panel">
+      <div class="ev-head">
+        <span class="ev-tier">S 级大赛 · BLAST 伦敦站</span>
+        <h1>四分之一决赛 · Spirit vs Vitality</h1>
+        <span class="ev-date">2026年9月18日 (周五)</span>
+      </div>
+      <div class="ev-body">
+        <div class="detail-grid">
+          <div>
+            <div class="team-card">
+              <div class="team-name">Spirit</div>
+              <div class="team-place">本站名次 <b>四强</b></div>
+            </div>
+            <div class="match-list">
+              <div class="match"><div class="stage">小组赛 R1</div><div class="line">vs <b>Astralis</b></div><div class="foot"><span class="mscore win">2:0</span><span class="res win">胜</span></div></div>
+              <div class="match"><div class="stage">小组赛 R3</div><div class="line">vs <b>MOUZ</b></div><div class="foot"><span class="mscore win">2:1</span><span class="res win">胜</span></div></div>
+              <div class="match on"><div class="stage">四分之一决赛</div><div class="line">vs <b>Vitality</b></div><div class="foot"><span class="mscore lose">1:2</span><span class="res lose">负</span></div></div>
+            </div>
+          </div>
+
+          <div class="detail-main">
+            <div class="map-tabs">
+              <button class="map-tab" type="button">图1</button>
+              <button class="map-tab on" type="button">图2</button>
+              <button class="map-tab" type="button">图3</button>
+              <button class="map-tab" type="button">全场表现</button>
+            </div>
+
+            <div class="map-score">
+              <div class="ms-head"><span class="ms-map">图 2 · 单图比分</span></div>
+              <div class="ms-line">
+                <div class="ms-side">Spirit</div>
+                <div class="ms-nums"><b class="hi">13</b><span class="colon">:</span><b>9</b></div>
+                <div class="ms-side right">Vitality</div>
+              </div>
+            </div>
+
+            <div class="stat-wrap">
+              <table class="stat-table">
+                <caption>图 2 · 选手明细<span class="tag new">新增：首杀</span></caption>
+                <thead>
+                  <tr>
+                    <th>选手</th><th>K</th><th>D</th><th>A</th><th>首杀</th><th>ADR</th><th>KAST</th><th>Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="team-row"><td colspan="8">Spirit</td></tr>
+                  <tr>
+                    <td><span class="nm">donk <span class="trait sig sm">开局先锋</span><span class="trait sm">神经刀</span></span></td>
+                    <td>31</td><td>14</td><td>4</td><td class="fk-hi">8</td><td>124</td><td>74%</td><td class="r-hi">1.94</td>
+                  </tr>
+                  <tr class="me">
+                    <td><span class="nm">yuki <span class="trait sm">爆头机器</span></span></td>
+                    <td>19</td><td>15</td><td>5</td><td>2</td><td>88</td><td>71%</td><td class="r-mid">1.16</td>
+                  </tr>
+                  <tr>
+                    <td><span class="nm">sh1ro <span class="trait sig sm">AWP 专精</span></span></td>
+                    <td>17</td><td>11</td><td>2</td><td>3</td><td>82</td><td>78%</td><td class="r-mid">1.21</td>
+                  </tr>
+                  <tr>
+                    <td><span class="nm">zont1x <span class="trait sm">自由人嗅探</span></span></td>
+                    <td>13</td><td>12</td><td>3</td><td>1</td><td>71</td><td>76%</td><td>0.98</td>
+                  </tr>
+                  <tr>
+                    <td><span class="nm">magixx</span></td>
+                    <td>11</td><td>14</td><td>7</td><td>1</td><td>64</td><td>75%</td><td>0.91</td>
+                  </tr>
+                  <tr class="team-row"><td colspan="8">Vitality</td></tr>
+                  <tr>
+                    <td><span class="nm">ZywOo <span class="trait sig sm">AWP 专精</span><span class="trait sm">大赛型</span></span></td>
+                    <td>24</td><td>16</td><td>4</td><td>4</td><td>101</td><td>72%</td><td class="r-hi">1.48</td>
+                  </tr>
+                  <tr>
+                    <td><span class="nm">ropz <span class="trait sig sm">残局之王</span></span></td>
+                    <td>16</td><td>13</td><td>3</td><td>1</td><td>79</td><td>74%</td><td class="r-mid">1.09</td>
+                  </tr>
+                  <tr>
+                    <td><span class="nm">flameZ <span class="trait sig sm">开局先锋</span></span></td>
+                    <td>18</td><td>18</td><td>5</td><td class="fk-hi">6</td><td>86</td><td>68%</td><td>1.02</td>
+                  </tr>
+                  <tr>
+                    <td><span class="nm">mezii <span class="trait sm">精神领袖</span></span></td>
+                    <td>12</td><td>15</td><td>8</td><td>0</td><td>66</td><td>77%</td><td>0.93</td>
+                  </tr>
+                  <tr>
+                    <td><span class="nm">apEX <span class="trait sig sm">团队大脑</span></span></td>
+                    <td>10</td><td>16</td><td>9</td><td>0</td><td>58</td><td>73%</td><td>0.86</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="map-note">
+              <div class="mn-head">本场特征</div>
+              <ul>
+                <li><span>donk 首杀 <span class="v hi">8</span> 次，全场最高（本图双方合计 21 次）</span></li>
+                <li><span>flameZ 同样走开局先锋，但阵亡 <span class="v">18</span> 次为全场最多 —— 高首杀与高阵亡是同一个特质的代价</span></li>
+                <li><span>ZywOo 大赛型：本站 Rating <span class="v hi">1.42</span>，高出其本赛季均值 <span class="v">0.09</span></span></li>
+                <li><span>apEX 团队大脑：全队 KAST <span class="v">73.7%</span>，其中 4 人高于个人赛季均值</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 三、特质图鉴 ============ -->
+  <section class="sec">
+    <h2><span class="no">3</span>特质图鉴：效果与代价必须成对</h2>
+    <p>每条特质都是一次<b>偏移</b>——把同一名选手的资源从 A 挪到 B，或只放大方差（均值不变）。这样给 500 人挂满特质，世界平均强度也不漂移。所有「效果 / 代价」都写成 <b>check.cjs 可以断言的列</b>，标了不生效会被测试挡住。</p>
+
+    <div class="cat">
+      <table class="cat-table">
+        <thead>
+          <tr><th>特质</th><th>类别</th><th>效果</th><th>代价</th><th>现实例子</th></tr>
+        </thead>
+        <tbody>
+          <tr class="group"><td colspan="5">招牌特质 · 每人最多一个</td></tr>
+          <tr>
+            <td class="t-name"><span class="trait sig">开局先锋</span></td>
+            <td class="t-kind">输出</td>
+            <td class="t-eff">entry 权重 <span class="n">×1.30</span>，首杀 <span class="n">+9%</span>，击杀 <span class="n">+5%</span></td>
+            <td class="t-cost">阵亡 <span class="n">+9%</span></td>
+            <td class="t-who">donk、flameZ、mzinho、jabbi</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait sig">AWP 专精</span></td>
+            <td class="t-kind">输出</td>
+            <td class="t-eff">限狙击手：击杀 <span class="n">+7%</span>，ADR <span class="n">+6%</span></td>
+            <td class="t-cost">助攻 <span class="n">−10%</span>，身法 <span class="n">−4</span></td>
+            <td class="t-who">ZywOo、m0NESY、sh1ro、w0nderful</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait sig">残局之王</span></td>
+            <td class="t-kind">输出</td>
+            <td class="t-eff">残局项 <span class="n">+10</span>，KAST <span class="n">+3</span>，1vX 回合 Rating <span class="n">+0.15</span></td>
+            <td class="t-cost">常规击杀 <span class="n">−3%</span></td>
+            <td class="t-who">ropz、ZywOo、KSCERATO</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait sig">团队大脑</span></td>
+            <td class="t-kind">团队</td>
+            <td class="t-eff">全队 KAST <span class="n">+1</span>，队友助攻 <span class="n">+3%</span></td>
+            <td class="t-cost">自身击杀 <span class="n">−6%</span></td>
+            <td class="t-who">karrigan、Aleksib、HooXi、apEX</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait sig">大赛型</span></td>
+            <td class="t-kind">方差</td>
+            <td class="t-eff">Major / S 级表现系数 <span class="n">+0.05</span></td>
+            <td class="t-cost">B 级 / 地区赛 <span class="n">−0.03</span></td>
+            <td class="t-who">ZywOo、NiKo、w0nderful</td>
+          </tr>
+          <tr class="group"><td colspan="5">习惯特质 · 每人最多两个</td></tr>
+          <tr>
+            <td class="t-name"><span class="trait">爆头机器</span></td>
+            <td class="t-kind">输出</td>
+            <td class="t-eff">爆头率 <span class="n">+8%</span>，预瞄权重 <span class="n">×1.15</span></td>
+            <td class="t-cost">压枪 <span class="n">−4</span>（点射打法）</td>
+            <td class="t-who">XANTARES、NiKo、KSCERATO</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait">神经刀</span></td>
+            <td class="t-kind">方差</td>
+            <td class="t-eff">单图 Rating 标准差 <span class="n">×1.40</span></td>
+            <td class="t-cost">均值不变（高光与崩盘都更多）</td>
+            <td class="t-who">m0NESY、XANTARES、donk</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait">自由人嗅探</span></td>
+            <td class="t-kind">输出</td>
+            <td class="t-eff">KAST <span class="n">+3</span>，击杀 <span class="n">+2%</span>，反打成功率 <span class="n">+6%</span></td>
+            <td class="t-cost">助攻 <span class="n">−8%</span>，ADR <span class="n">−3%</span></td>
+            <td class="t-who">ropz、zont1x</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait">精神领袖</span></td>
+            <td class="t-kind">团队</td>
+            <td class="t-eff">队伍实力 <span class="n">+0.8</span>，队友抗压 <span class="n">+2</span></td>
+            <td class="t-cost">自身无任何数据加成</td>
+            <td class="t-who">FalleN、karrigan、mezii</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait cost">常青树</span></td>
+            <td class="t-kind">成长</td>
+            <td class="t-eff">30 岁后身体衰退 <span class="n">−50%</span></td>
+            <td class="t-cost">22 岁前成长 <span class="n">−15%</span></td>
+            <td class="t-who">FalleN、karrigan、XANTARES</td>
+          </tr>
+          <tr>
+            <td class="t-name"><span class="trait cost">大赛软脚</span></td>
+            <td class="t-kind">方差</td>
+            <td class="t-eff">无正面效果（纯叙事短板）</td>
+            <td class="t-cost">Major / S 级 <span class="n">−0.05</span>，小赛事 <span class="n">+0.04</span></td>
+            <td class="t-who">由玩家在生涯中「养成」，不标注给明星</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend">
+      <span><span class="trait sig">招牌特质</span> 琥珀实心，每人最多一个，出现在成员卡上</span>
+      <span><span class="trait">习惯特质</span> 灰色描边，可叠加两个</span>
+      <span><span class="trait cost">带代价</span> 虚线描边，表示这条是纯短板</span>
+    </div>
+  </section>
+
+  <!-- ============ 四、玩家解锁 ============ -->
+  <section class="sec">
+    <h2><span class="no">4</span>玩家如何获得特质（待定，先看形态）</h2>
+    <p>真实明星靠人工标注，玩家是自定义新秀，没有档案可标注。下面这块是<b>可选项</b>，需要你先拍板要不要做：玩家靠赛季表现或事件逐步解锁习惯特质，上限 1 招牌 + 2 习惯，且允许负面特质（「大赛软脚」是在大站连续崩盘后长出来的）。</p>
+
+    <div class="two">
+      <div id="choices-panel">
+        <span id="choice-kicker">事件 · 赛季末</span>
+        <p id="question">这一年你在 S 级大赛的表现在队里数一数二</p>
+        <p id="choice-desc">教练拿着数据找你：「你的开局对枪成功率全队第一，比 donk 还高两个点。要不要把这条路走到底？」</p>
+        <div id="choices">
+          <button class="opt" type="button">
+            <span class="idx">1</span>
+            <span class="txt">从此专攻开局对枪
+              <span class="sub"><span class="trait sig sm">开局先锋</span><span style="font-size:11px;color:var(--ink-3)">阵亡 +9%，招牌位占用</span></span>
+            </span>
+          </button>
+          <button class="opt" type="button">
+            <span class="idx">2</span>
+            <span class="txt">打磨残局与补枪
+              <span class="sub"><span class="trait sm">自由人嗅探</span><span style="font-size:11px;color:var(--ink-3)">助攻 −8%</span></span>
+            </span>
+          </button>
+          <button class="opt" type="button">
+            <span class="idx">3</span>
+            <span class="txt">保持全面，不贴标签
+              <span class="sub"><span style="font-size:11px;color:var(--ink-3)">不获得特质，但已解锁的成长点数保留</span></span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div class="howto">
+        <h3>解锁规则的三个候选口径</h3>
+        <ol>
+          <li><b>纯事件式</b>：赛季末或里程碑时弹一次选择（如上），玩家主动确定风格。可控、可预期，但一年只有一两次。</li>
+          <li><b>表现式（推荐）</b>：在同位置、同档位的选手之间，某个可断言指标持续偏出（如首杀率进联盟前 10%）满一个赛季，自动解锁对应特质并播报一条日志。与「特质的定义就是数据偏差」这条原则自洽。</li>
+          <li><b>混合式</b>：表现达标只<b>解锁候选</b>，是否采纳仍需玩家在事件里确认——避免自动给玩家贴上他不想背的负面特质。</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

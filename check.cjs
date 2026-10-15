@@ -10,14 +10,15 @@ const game = vm.runInNewContext(source + `\n({
     VRS_TEAMS, PLAYER_DB, TIERS, LEAGUES, BOUNDS, vrs_tier, league_of, league_key, vrs_weight, record_performance,
     round, overall_of, tier_of, npc_retire_chance, make_human, move_to_team, apply_effects, option_hint, growth, grade_of,
     event_field, eligible_tournaments, event_allows, rank_band, rank_of, band_of, team_invited,
-    tier_offset, tier_rank, run_tournament, run_event, world_station, honor_points, expected_score, match_delta,
-    seed_rating, win_chance, START_RATING, POINT_K, SEED_SPREAD, MIN_RATING, MAX_RATING, RANK_CARRY,
+    tier_offset, tier_rank, transfer_offer, run_tournament, run_event, world_station, honor_points, rank_expected, match_delta,
+    win_chance, START_RATING, WIN_K, LOSS_K, RANK_SLOPE, MIN_RATING, MAX_RATING, RANK_CARRY,
     play_swiss, play_bracket, group_order, make_groups, simulate_series, series_cap, swiss_series_cap, map_stat, lineup_of,
     make_swiss, swiss_round, swiss_result, group_rank,
     make_ladder, ladder_round, play_ladder, LADDER_STAGES, CLINCH_WINS, CLINCH_LOSSES,
     make_clinch_swiss, clinch_round,
     event_leaders, stat_entry, team_event_rating, individual_rating, placement_text,
     human_year_plan, event_participants, world_participants, live_rank_of, needs_detailed_stats,
+    schedule_snapshot, upcoming_matches, diff_schedule, schedule_notice_lines, event_summary_payload,
     ask_retire, contract_decision, run_game, play_human_year, RETIRE, status_snapshot,
     season_payload, career_payload, top20_rank, c, CYAN, BOLD, MIN_OVERALL,
     A_EVENTS, GRADE_CFG, FORMATS, MAIN_DRAW_MAX, BAND_SIZE, BAND_COUNT, BANDS,
@@ -26,6 +27,9 @@ const game = vm.runInNewContext(source + `\n({
     invalidate,
     ATTR_BASE_KEYS, ATTR_PERF_KEYS, ATTR_FLOORS, apply_attribute_floors, update_form, form_multiplier, form_duration,
     FORM_STATES, FORM_MOD, FORM_NEUTRAL,
+    practice_opponent, year_rating_baseline, adjust_form_by_practice, play_practice_match,
+    chem_multiplier, chem_gain_scale, adjust_chemistry, human_team, note_roster_change, note_coach_change,
+    CHEM_START, CHEM_MAX, CHEM_WIN, CHEM_LOSS, CHEM_ROSTER_CHANGE, CHEM_COACH_CHANGE, CHEM_SOFT_FROM,
     game_date, date_label, date_full, year_start_weekday, week_of, week_monday, month_day,
     reference_day, MONTH_DAYS, WEEKDAY_NAMES, YEAR_DAYS,
 })`);
@@ -301,6 +305,47 @@ function check_calendar() {
     }
 }
 
+// 转会邀约事件：接受挑战必须真的完成转会，且落点档位只能是「当前档」或「高一档」，
+// 既不能越档也不能降档；留守选项必须实际抬高队伍磨合度（化学值）。曾经 p.league 恒为
+// undefined 让所有档位类转会静默失效，这里用扰动断言守住「接受必定生效」。
+function check_transfer_event() {
+    const event = game.EVENTS.find(e => e.id === "transfer");
+    assert.ok(event, "转会邀约事件存在");
+    assert.equal(event.weight, 2);
+    assert.ok(event.options[0].fx.transfer, "接受选项走 transfer 效果");
+    assert.ok(event.options[1].fx.chem && event.options[1].fx.chem[0] > 0, "留守选项加磨合度");
+
+    // 逐档位验证转会落点：同档与高一档都要出现，且从不越档或降档。
+    let same = 0, up = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+        const world = new game.World(new game.Random(seed));
+        const human = game.make_human(world, "transfer" + seed, "步枪手", new game.Random(seed + 1));
+        for (const target of world.teams) {
+            const from = human.team;
+            const index = from.roster.indexOf(human);
+            if (index >= 0) from.roster.splice(index, 1);
+            target.roster.push(human);
+            human.team = target;
+            const before = target.tier;
+            const message = game.transfer_offer(human, new game.Random(seed * 31 + before));
+            assert.ok(message, `档位 ${before} 的转会邀约必须生效`);
+            assert.notEqual(human.team, target, "转会必须换到别的队伍");
+            const after = human.team.tier;
+            assert.ok(after === before || after === before + 1, `落点档位 ${before} -> ${after} 越档`);
+            if (after === before) same += 1; else up += 1;
+        }
+    }
+    assert.ok(same > 0 && up > 0, "同档与升档都应出现");
+
+    // 留守：同一份 fx 走一次 apply_effects，磨合度必须上升。
+    const rng = new game.Random(99);
+    const world = new game.World(rng);
+    const human = game.make_human(world, "stay", "步枪手", new game.Random(100));
+    const before = human.team.chemistry;
+    game.apply_effects(human, event.options[1].fx, rng, []);
+    assert.ok(human.team.chemistry > before, "留守必须抬高磨合度");
+}
+
 async function check() {
     // —— 基础规则 —— //
     assert.equal(game.ROLE_NAMES.length, 6);
@@ -344,6 +389,7 @@ async function check() {
     assert.ok(extra_ids.every(id => !vrs_ids.includes(id)));
     check_world(world);
     check_opening(world);
+    check_transfer_event();
     // 每个名次区间映射到固定的档位（升降级规则）。
     for (const band of game.RANK_BANDS) {
         assert.equal(game.vrs_tier(band.min_rank), band.tier);
@@ -361,29 +407,37 @@ async function check() {
     assert.ok(extra_ceiling <= vrs_floor, `扩展联赛上限 ${extra_ceiling} 超过了前 50 名下限 ${vrs_floor}`);
     assert.ok(world.teams.every((team, i) => i === 0 || world.teams[i - 1].potential_base > team.potential_base));
 
-    // —— 赛季积分：起点、守恒、强弱收益 —— //
+    // —— 赛季积分：起点、累积、实时排名差收益 —— //
     assert.equal(game.START_RATING, 1000);
     assert.ok(world.teams.every(team => team.rating === game.START_RATING));
     assert.equal(world.teams.reduce((sum, team) => sum + team.rating, 0), game.START_RATING * TEAM_COUNT);
-    assert.ok(Math.abs(game.match_delta(1000, 1000, true) - game.POINT_K / 2) < 1e-9, "同分取胜约拿 K/2");
-    assert.ok(Math.abs(game.match_delta(1000, 1000, true) + game.match_delta(1000, 1000, false)) < 1e-9, "胜负变化互为相反数");
-    assert.ok(game.match_delta(1000, 1200, true) > game.match_delta(1000, 800, true), "低分赢高分的收益更大");
-    assert.ok(Math.abs(game.match_delta(1000, 1400, true) - game.POINT_K * (1 - game.expected_score(1000, 1400))) < 1e-9);
-    assert.ok(game.seed_rating(1, 100) > game.seed_rating(50, 100));
-    assert.ok(game.seed_rating(50, 100) > game.seed_rating(100, 100));
-    assert.ok(Math.abs(game.seed_rating(1, 100) - (game.START_RATING + 49.5 * game.SEED_SPREAD)) < 1e-9);
+    // 同排名时赢 WIN_K/2、输 LOSS_K/2；赢多于输，一场结算的合计为正，因此不是零和。
+    assert.ok(Math.abs(game.match_delta(50, 50, true) - game.WIN_K / 2) < 1e-9, "同排名取胜拿 WIN_K/2");
+    assert.ok(Math.abs(game.match_delta(50, 50, false) + game.LOSS_K / 2) < 1e-9, "同排名落败扣 LOSS_K/2");
+    assert.ok(game.match_delta(50, 50, true) + game.match_delta(50, 50, false) > 0, "胜负结算不再零和");
+    // 排名差拉大：以强胜弱收益递减并趋近 0，以弱胜强收益递增。
+    const even = game.match_delta(50, 50, true);
+    const sweep = game.match_delta(1, 100, true);
+    assert.ok(sweep < even, "以强胜弱拿得比势均力敌少");
+    assert.ok(sweep < game.WIN_K * 0.1, "排名差拉满时以强胜弱趋近 0 分");
+    assert.ok(game.match_delta(100, 1, true) > even * 1.5, "末位爆冷头名拿得最多");
+    // 输球方向对称：输给越弱的对手扣得越多，输给强队几乎不扣。
+    assert.ok(game.match_delta(1, 100, false) < -game.LOSS_K * 0.9, "以强输弱扣得最多");
+    assert.ok(game.match_delta(100, 1, false) > -game.LOSS_K * 0.1, "以弱输强几乎不扣");
     const strong = world.teams[0], weak = world.teams[99];
     world.reset_season();
-    assert.ok(strong.seed_rating > weak.seed_rating);
+    assert.ok(strong.rank === 1 && weak.rank === TEAM_COUNT);
     const before_strong = strong.rating, before_weak = weak.rating;
     strong.play_match(weak, true);
-    assert.ok(strong.rating - before_strong < game.POINT_K / 4, "高名次赢低名次收益很低");
-    assert.ok(before_weak - weak.rating < game.POINT_K / 4, "低名次输给高名次损失很低");
-    assert.ok(Math.abs((strong.rating - before_strong) + (weak.rating - before_weak)) < 1e-9, "总积分守恒");
-    assert.ok(game.match_delta(weak.seed_rating, strong.seed_rating, true) > game.POINT_K * 0.8, "末位爆冷头名应拿到接近满额积分");
+    assert.ok(strong.rating > before_strong, "以强胜弱仍是正收益");
+    assert.ok(before_weak - weak.rating < game.LOSS_K, "以弱输强损失很小");
+    assert.ok((strong.rating - before_strong) + (weak.rating - before_weak) > 0, "一场结算的合计为正");
     world.reset_season();
     assert.ok(world.teams.every(team => team.rating === game.START_RATING), "赛季初全部回到 1000");
-    assert.ok(world.teams.every(team => team.seed_rating === game.seed_rating(team.rank, TEAM_COUNT)));
+    // 实时排名由当前积分推出；全联盟同分时退回上一季末的名次。
+    assert.equal(world.live_rank_of(strong), 1, "实时排名首位");
+    assert.equal(world.live_rank_of(weak), TEAM_COUNT, "实时排名末位");
+    assert.ok(world.teams.every(team => team.live_rank === team.rank), "赛季初实时排名回到上一季末名次");
     // 开季时冻结的引用期名次等于当时的实时名次。
     assert.ok(world.teams.every(team => team.ref_rank === team.rank));
 
@@ -466,7 +520,7 @@ async function check() {
     // 加上淘汰赛 4+2+1 = 7 场，一整站恰好 3 × 33 + 7 = 106 场。
     assert.equal(summary.standings.reduce((sum, team) => sum + team.tour_wins + team.tour_losses, 0),
         2 * (3 * 33 + 4 + 2 + 1));
-    assert.ok(Math.abs(world.teams.reduce((sum, t) => sum + t.rating, 0) - total_before) < 1e-6, "赛事后总积分守恒");
+    assert.ok(world.teams.reduce((sum, t) => sum + t.rating, 0) > total_before, "累积制：赛事后总积分增加");
     // 逐图统计：每名选手的地图数等于本队打过的图数，数据都在合理区间。
     const leaders = game.event_leaders(summary);
     assert.equal(leaders.stats.length, event.teams * 5);
@@ -540,7 +594,74 @@ async function check() {
     assert.equal(human.team.league, "extra");
     assert.equal(human.team.tier, 0, "玩家从扩展联赛丙级（倒数 1～10 名）起步");
     assert.ok(human.team.rank >= 91 && human.team.rank <= 100);
-    assert.ok(human.contract_left >= 2 && human.contract_left <= 4);
+    assert.equal(human.contract_left, 1, "首份合同为 1 年");
+
+    // —— 队伍磨合度：中性基准、实力映射、人员变动与事件效果 —— //
+    {
+        // 玩家入队就是一次阵容变动：从「刚组建」的基准再扣一次。
+        assert.equal(human.team.chemistry, game.CHEM_START + game.CHEM_ROSTER_CHANGE,
+            "玩家入队后应从基准扣一次人员变动");
+
+        const probe = new game.Team({name: "chem-probe", rank: 5});
+        const mult = chem => { probe.chemistry = chem; return Math.round(game.chem_multiplier(probe) * 1000) / 1000; };
+        assert.equal(mult(game.CHEM_START), 1, "100% 应当是中性基准");
+        assert.equal(mult(0), 0.95);
+        assert.equal(mult(game.CHEM_MAX), 1.1);
+        assert.equal(mult(game.CHEM_MAX + 500), 1.1, "超过上限不该继续放大");
+        // 增益递减：150 以下全额、300 归零，否则一个赛季就会贴顶并永久静止。
+        assert.equal(game.chem_gain_scale(game.CHEM_SOFT_FROM), 1);
+        assert.equal(game.chem_gain_scale(150), 1);
+        assert.equal(game.chem_gain_scale(game.CHEM_MAX), 0);
+        assert.ok(game.chem_gain_scale(225) < 1 && game.chem_gain_scale(225) > 0);
+
+        // 人员变动只对玩家所在队伍生效：NPC 队伍必须保持中性，不扰动已校准的世界。
+        assert.ok(game.human_team(human.team), "玩家所在队伍应当被识别");
+        const npc_team = world.teams.find(t => t !== human.team && !game.human_team(t));
+        const npc_before = npc_team.chemistry;
+        game.note_roster_change(npc_team);
+        game.note_coach_change(npc_team);
+        assert.equal(npc_team.chemistry, npc_before, "NPC 队伍的磨合度不该变动");
+
+        const human_before = human.team.chemistry;
+        game.note_roster_change(human.team);
+        assert.equal(human.team.chemistry, human_before + game.CHEM_ROSTER_CHANGE, "队内人员进出应当扣磨合度");
+        game.note_coach_change(human.team);
+        assert.equal(human.team.chemistry, human_before + game.CHEM_ROSTER_CHANGE + game.CHEM_COACH_CHANGE,
+            "教练更换应当扣磨合度");
+        game.adjust_chemistry(human.team, 9999);
+        assert.equal(human.team.chemistry, game.CHEM_MAX, "磨合度应当封顶在 300");
+
+        // 随机事件里的磨合度效果：要真的改数、要写进结果行、也要在事件卡上给出方向标签。
+        human.team.chemistry = 150;
+        const lines = [];
+        game.apply_effects(human, {chem: [10, 10]}, rng, lines);
+        assert.equal(human.team.chemistry, 160, "事件的 chem 效果应当改磨合度");
+        assert.ok(lines.some(line => line.includes("磨合度")), "磨合度变化应当出现在事件结果行里");
+        assert.ok(game.option_hint({chem: [10, 10]}, human.role).some(hint => hint.text.includes("磨合度")),
+            "事件卡应当标出磨合度方向");
+        game.apply_effects(human, {chem: [-999, -999]}, rng, []);
+        assert.equal(human.team.chemistry, 0, "磨合度应当有 0 下限");
+
+        // 扰动生效：同一个 seed 逐次配对比较，只改磨合度，胜负必须跟着变（防止系数没接上而空转）。
+        human.team.chemistry = game.CHEM_START;
+        // 对手取同档位的另一支队伍，双方实力接近，胜负才由磨合度这一项主导。
+        const foe = world.teams.find(t => t !== human.team && t.tier === human.team.tier);
+        const tally = chem => {
+            let wins = 0;
+            for (let i = 0; i < 60; i++) {
+                human.team.chemistry = chem;
+                const event = {key: `chem-${chem}-${i}`, name: "磨合度校验", grade: "B", is_major: false};
+                const result = game.simulate_series(human.team, foe, event, new game.Random(1000 + i),
+                    new Map(), 3, false);
+                if (result.winner === human.team) wins += 1;
+            }
+            return wins;
+        };
+        const low = tally(0);
+        const high = tally(game.CHEM_MAX);
+        assert.ok(high > low, `磨合度应当影响胜负：300% 的 ${high} 胜不该少于 0% 的 ${low} 胜`);
+        human.team.chemistry = game.CHEM_START;
+    }
     for (const rank of [1, 12, 25, 40, 50]) {
         world.reset_season();
         const team = world.teams.find(t => t.rank === rank);
@@ -558,7 +679,8 @@ async function check() {
         const recomputed = [];
         for (const item of plan) {
             if (item.event.circuit !== "main") continue;
-            const ok = game.event_allows(item.event, game.rank_of(probe.team));
+            // 口径必须与 human_year_plan 内部一致：按该站自己的引用期名次判定。
+            const ok = game.event_allows(item.event, world.entry_rank_at(probe.team, item.event));
             recomputed.push([item.event.key, ok]);
             assert.equal(item.plays, ok, `${item.event.name} 的名额判定不一致`);
         }
@@ -575,6 +697,116 @@ async function check() {
         probe.team.dirty = true;
         world.gen_npc(probe.team, probe.role);
     }
+
+    // —— 引用期锁定：名单只认「开赛日前 4 周」那一刻的名次 —— //
+    // 两个方向都要守住：引用期之前打出的成绩必须改变本站名单（否则等于赛季初锁定），
+    // 引用期一过本站就定死，之后再怎么升降都不再影响它（否则同一站会给出两份名单）。
+    {
+        world.reset_season();
+        // 挑一站引用期落在赛季中，这样才有「引用期之前」的名次变化可言。
+        const event = game.ANNUAL_CALENDAR.find(e =>
+            e.circuit === "main" && game.reference_day(e.start_day) > 1);
+        const ref_day = game.reference_day(event.start_day);
+        const roster = () => game.world_participants(world, event, null).map(t => t.name);
+        const open_list = roster();
+
+        // 引用期之前把名次搅乱：原本 51～100 名冲到榜首、1～50 名跌到谷底，然后记快照。
+        world.teams.forEach((team, i) => { team.rating = i < 50 ? 400 + i : 2000 + i; });
+        world.invalidate_live_ranks();
+        assert.equal(world.live_rank_of(world.teams[99]), 1, "实时排名应当被搅乱");
+        world.snapshot_ranks(ref_day);
+        const at_ref = roster();
+        assert.notDeepEqual(at_ref, open_list, "引用期之前的名次变化必须改变本站名单");
+
+        // 引用期之后再彻底搅乱一次并记快照：本站名单必须纹丝不动。
+        world.teams.forEach((team, i) => { team.rating = i < 50 ? 2500 + i : 400 + i; });
+        world.invalidate_live_ranks();
+        world.snapshot_ranks(ref_day + 10);
+        assert.deepEqual(roster(), at_ref, "引用期过后，本站名单不得再受名次变化影响");
+
+        // 引用期之后的变化应当落到「引用期更晚」的站点上。
+        const later = game.ANNUAL_CALENDAR.find(e =>
+            e.circuit === "main" && game.reference_day(e.start_day) > ref_day + 10);
+        const later_before = game.world_participants(world, later, null).map(t => t.name);
+        world.teams.forEach((team, i) => { team.rating = i < 50 ? 400 + i : 3000 + i; });
+        world.invalidate_live_ranks();
+        world.snapshot_ranks(game.reference_day(later.start_day));
+        assert.notDeepEqual(game.world_participants(world, later, null).map(t => t.name), later_before,
+            "引用期更晚的站点应当看到后来的名次变化");
+    }
+    world.reset_season();
+
+    // —— 赛程滑块与播报：「可参加」集合的变化必须双向可观测 —— //
+    // 右栏滑块列出今年可参加的站（已打完的在前、未开赛的在后），集合按各站引用期名次现算：
+    // 名次够上了要能播「可参加」，掉出去要能播「已失去」；引用期一过该站定死，要播「已锁定」，
+    // 且只播一次。已开赛的站只是从「未来」挪进「已结束」（仍在表里），绝不能被当成「失去资格」。
+    {
+        world.reset_season();
+        const probe = game.make_human(world, "slider", "步枪手", new game.Random(11));
+        // 玩家从 91～100 名起步：赛季初只有丙级档地区赛可打，且全部在未来。
+        const open = game.schedule_snapshot(probe, 0);
+        assert.ok(open.length > 0, "赛季初应当有地区赛可打");
+        assert.ok(open.every(item => !item.played && item.days > 0), "赛季初不该出现已打完的站");
+        assert.ok(game.upcoming_matches(probe, 0).length === open.length, "赛季初的站都应是未开赛的");
+
+        // 名次冲到第 1 并记快照（等价于赛季中打出成绩）：后面各站的资格推断必须跟着变。
+        world.teams.forEach(team => { team.rating = 400; });
+        probe.team.rating = 2500;
+        world.invalidate_live_ranks();
+        assert.equal(world.live_rank_of(probe.team), 1, "实时排名应当被搅乱");
+        world.snapshot_ranks(1);
+        const up = game.schedule_snapshot(probe, 0);
+        const gained = game.diff_schedule(open, up);
+        assert.ok(gained.added.length > 0, "名次大涨后应当拿到更多站的参赛资格");
+        // 分档不同：升到第 1 就不再打丙级档地区赛，因此「增」与「减」是同时发生的。
+        assert.ok(gained.lost.length > 0, "升到第 1 应当丢掉原来的丙级档地区赛");
+        assert.equal(gained.locked.length, 0, "引用期还没到，不该有站被锁定");
+        const added_lines = game.schedule_notice_lines(gained.added, "added", world.live_rank_of(probe.team))
+            .map(text => text.replace(/\x1b\[[0-9;]*m/g, ""));
+        assert.equal(added_lines.length, gained.added.length);
+        assert.ok(added_lines.every(text =>
+            /^根据当前排名战队排名 #1，可参加 .+，比赛日期 \d{4}\/\d+\/\d+ -- \d{4}\/\d+\/\d+，名额将在引用期 \d{4}\/\d+\/\d+ 确定$/
+                .test(text)), `可参加播报格式不符：${added_lines[0]}`);
+
+        // 名次再跌到末位：反向同样可观测（否则播报只是单向装饰）。
+        world.teams.forEach(team => { team.rating = 2500; });
+        probe.team.rating = 400;
+        world.invalidate_live_ranks();
+        assert.equal(world.live_rank_of(probe.team), TEAM_COUNT, "实时排名应当再被搅乱");
+        world.snapshot_ranks(2);
+        const down = game.schedule_snapshot(probe, 0);
+        const lost = game.diff_schedule(up, down);
+        assert.ok(lost.lost.length > 0, "名次大跌后应当失去主赛名额");
+        assert.ok(lost.added.length > 0, "名次大跌后会掉回低档地区赛");
+        assert.ok(game.schedule_notice_lines(lost.lost, "lost", TEAM_COUNT)
+            .every(text => text.replace(/\x1b\[[0-9;]*m/g, "").includes("已失去")), "失去资格播报格式不符");
+
+        // 引用期一过该站资格定死：只播一次「已锁定」，再对比不再重复。
+        const target = down[down.length - 1];
+        const ref = game.reference_day(target.start_day);
+        assert.ok(ref > 2, "挑到的站引用期应落在快照之后");
+        const at = day => game.schedule_snapshot(probe, day).find(item => item.key === target.key);
+        assert.equal(at(ref - 1).locked, false, "引用期之前不应算已锁定");
+        assert.equal(at(ref).locked, true, "引用期当天应转为已锁定");
+        const locking = game.diff_schedule([at(ref - 1)], [at(ref)]);
+        assert.deepEqual(plain(locking.locked.map(item => item.key)), [target.key]);
+        assert.ok(game.schedule_notice_lines(locking.locked, "locked", 0)[0]
+            .replace(/\x1b\[[0-9;]*m/g, "").startsWith("你所在战队已锁定"), "锁定播报格式不符");
+        assert.equal(game.diff_schedule([at(ref)], [at(ref)]).locked.length, 0, "已锁定的站不应重复播报");
+
+        // 已开赛的站从「未来」挪进「已结束」：仍在表里，不算失去资格。
+        const target_end = game.ANNUAL_CALENDAR.find(item => item.key === target.key).end_day;
+        const past = at(target_end + 1);
+        assert.equal(past.played, true, "赛期已过的站应归入已结束");
+        assert.equal(game.diff_schedule([at(ref)], [past]).lost.length, 0, "已开赛的站不算失去资格");
+        assert.ok(past.days === undefined, "已结束的站不再带距今天数");
+
+        probe.world.players.pop();
+        probe.team.roster.pop();
+        probe.team.dirty = true;
+        world.gen_npc(probe.team, probe.role);
+    }
+    world.reset_season();
 
     // —— 玩家：事件、转会、合同、退役 —— //
     human.year = 4;
@@ -676,6 +908,105 @@ async function check() {
     assert.equal(game.form_multiplier({form: game.FORM_NEUTRAL}), 1, "普通状态不修正表现");
     assert.equal(game.form_multiplier({}), 1, "无状态（NPC）不修正表现");
 
+    // 练习赛：每周抽一支**同档位**的队伍（随机、不重复抽到自己）。
+    {
+        const tier = human.team.tier;
+        const probe_rng = new game.Random(11);
+        const seen = new Set();
+        for (let i = 0; i < 80; i++) {
+            const opponent = game.practice_opponent(world, human.team, probe_rng);
+            assert.ok(opponent && opponent !== human.team, "练习赛必须抽到别的队伍");
+            assert.equal(opponent.tier, tier, "练习赛对手必须与玩家队伍同档位");
+            seen.add(opponent);
+        }
+        assert.ok(seen.size > 1, "练习赛对手应当是随机的，而不是固定同一支");
+    }
+
+    // 年内平均 Rating 的口径：有出场记录取本赛季均值，全空时返回 0（调用方据此跳过调整）。
+    {
+        const saved_yr = human.yr_ratings;
+        const saved_career = human.rating_all;
+        human.yr_ratings = [];
+        human.rating_all = [];
+        assert.equal(game.year_rating_baseline(human), 0, "没有任何记录时基准为 0");
+        human.yr_ratings = [1.0, 1.2];
+        assert.ok(Math.abs(game.year_rating_baseline(human) - 1.1) < 1e-9, "有记录时取年内均值");
+        human.yr_ratings = saved_yr;
+        human.rating_all = saved_career;
+    }
+
+    // 状态微调：明显高于年内均值升一档、明显低于降一档，小幅波动不动；每次最多一档且不越界。
+    {
+        human.form = game.FORM_NEUTRAL;
+        human.stability = 50;
+        assert.equal(game.adjust_form_by_practice(human, 1.30, 1.00), 1, "打得明显更好应升一档");
+        assert.equal(human.form, game.FORM_NEUTRAL + 1);
+        assert.equal(game.adjust_form_by_practice(human, 0.70, 1.00), -1, "打得明显更差应降一档");
+        assert.equal(human.form, game.FORM_NEUTRAL);
+        assert.equal(game.adjust_form_by_practice(human, 1.05, 1.00), 0, "小幅波动不改变状态");
+        assert.equal(human.form, game.FORM_NEUTRAL);
+        assert.equal(game.adjust_form_by_practice(human, 1.50, 0), 0, "基准缺失时不做调整");
+        human.form = game.FORM_STATES.length - 1;
+        assert.equal(game.adjust_form_by_practice(human, 1.50, 1.00), 0, "已在最高档不再上升");
+        human.form = 0;
+        assert.equal(game.adjust_form_by_practice(human, 0.50, 1.00), 0, "已在最低档不再下降");
+        human.form = game.FORM_NEUTRAL;
+        human.form_days = 0;
+    }
+
+    // 一场完整练习赛：只在生涯日志里留一行摘要，**积分 / 排名 / 战绩 / 赛季统计一律不动**。
+    {
+        const before = world.teams.map(team => ({
+            rating: team.rating, wins: team.wins, losses: team.losses, matches: team.matches,
+        }));
+        const stats_before = Object.keys(human.ev_stats).length;
+        const logged = [];
+        const saved_yr = human.yr_ratings;
+        const saved_weights = human.yr_rating_weights;
+        // 年内 Rating 只由正式赛事写入（finalize_event → record_performance），练习赛不得追加任何一条。
+        human.yr_ratings = [1.0];
+        human.yr_rating_weights = [1.0];
+        const season_maps_before = Object.values(human.ev_stats).reduce((sum, st) => sum + st.maps, 0);
+        human.form = game.FORM_NEUTRAL;
+        human.stability = 50;
+        await game.play_practice_match(human, new game.Random(21), {
+            write() {}, log(entry) { logged.push(entry); },
+        }, 30, game.game_date(game.START_YEAR, 30));
+        // 摘要格式（去掉颜色码后逐字对齐）：
+        // 【练习赛】X 战胜 Y  (2:1)   Rating 0.87  状态↓
+        const plain = text => text.replace(/\x1b\[[0-9;]*m/g, "");
+        assert.equal(logged.length, 1, "一场练习赛只留一条日志条目");
+        assert.equal(logged[0].kind, "match");
+        assert.match(logged[0].date, /^\d+\/\d+$/);
+        const line = plain(logged[0].lines[0]);
+        const expected = new RegExp(`^【练习赛】${human.team.name} (战胜|负于) .+  \\(\\d:\\d\\)   ` +
+            `Rating \\d\\.\\d\\d(  状态[↑↓])?$`);
+        assert.ok(expected.test(line), `练习赛摘要格式不符：${line}`);
+        // 胜/负与比分必须自洽（先到 2 胜者赢，Bo3 共 2～3 图）。
+        const won = line.includes("战胜");
+        const [, mine, theirs] = line.match(/\((\d):(\d)\)/);
+        assert.equal(won, Number(mine) > Number(theirs), "摘要的胜负与比分不符");
+        assert.equal(Math.max(Number(mine), Number(theirs)), 2, "Bo3 应有一方先到 2 胜");
+        // 状态只能由本场表现驱动（这里没有别的刷新）：箭头与 form 的移动方向一致。
+        const moved = line.includes("状态↑") ? 1 : line.includes("状态↓") ? -1 : 0;
+        assert.equal(human.form, game.FORM_NEUTRAL + moved, "日志里的状态方向与实际不符");
+        // 积分 / 排名 / 战绩 / 赛季统计全部原样。
+        world.teams.forEach((team, i) => {
+            assert.equal(team.rating, before[i].rating, `${team.name} 的积分被练习赛改动`);
+            assert.equal(team.wins, before[i].wins, `${team.name} 的胜场被练习赛改动`);
+            assert.equal(team.losses, before[i].losses, `${team.name} 的负场被练习赛改动`);
+            assert.equal(team.matches, before[i].matches, `${team.name} 的场次被练习赛改动`);
+        });
+        assert.equal(Object.keys(human.ev_stats).length, stats_before, "练习赛不得写进赛季统计");
+        // 赛季 Rating（年内平均 Rating 与生涯平均 Rating 的来源）必须与练习赛无关。
+        assert.deepEqual(Array.from(human.yr_ratings), [1.0], "练习赛不得写进年内 Rating");
+        assert.deepEqual(Array.from(human.yr_rating_weights), [1.0], "练习赛不得写进年内 Rating 权重");
+        assert.equal(Object.values(human.ev_stats).reduce((sum, st) => sum + st.maps, 0), season_maps_before,
+            "练习赛不得改变本赛季地图数");
+        human.yr_ratings = saved_yr;
+        human.yr_rating_weights = saved_weights;
+    }
+
     // 合同邀约只在同一联赛内产生，选择转会后现役席位总数不变。
     human.age = 23;
     let contract_options;
@@ -703,12 +1034,27 @@ async function check() {
     assert.ok(retire_player.retired);
     assert.equal(retire_player.retire_reason, "主动宣布退役");
     assert.equal(retire_player.year, 1, "第 1 年等待点退役后不再进入下一年");
-    // 面板快照：上场五人（含玩家）、教练与下一场比赛。
-    const snapshot = game.status_snapshot(human, {day: 0, next: {event: game.ANNUAL_CALENDAR[0]}});
+    // 面板快照：上场五人（含玩家）、教练与今年的赛程（右栏滑块数据源）。
+    const snapshot = game.status_snapshot(human, {day: 0});
     assert.equal(snapshot.roster.length, 5);
     assert.equal(snapshot.roster.filter(item => item.me).length, 1);
-    assert.ok(snapshot.coach && snapshot.next && snapshot.next.name && snapshot.next.days >= 0);
-    assert.equal(game.status_snapshot(human).next, null);
+    assert.ok(snapshot.coach, "面板快照缺少教练");
+    // 磨合度：面板要拿到整数显示值与它对实力的修正（100% 为中性，修正为 0）。
+    assert.equal(typeof snapshot.chemistry, "number", "面板快照缺少磨合度");
+    assert.equal(snapshot.chemistry, Math.round(human.team.chemistry));
+    assert.equal(snapshot.chem_bonus, game.chem_multiplier(human.team) - 1);
+    // 赛程按开赛日升序，只含玩家有资格的站；未开赛的站带资格状态、引用期与依据名次。
+    assert.ok(Array.isArray(snapshot.schedule) && snapshot.schedule.length > 0, "赛程快照为空");
+    snapshot.schedule.forEach((item, i) => {
+        assert.ok(item.key && item.name && item.tier && item.from && item.to, `赛程条目缺字段：${item.key}`);
+        if (i) assert.ok(snapshot.schedule[i - 1].start_day <= item.start_day, "赛程未按开赛日排序");
+        if (item.played) return;
+        assert.equal(item.locked, game.reference_day(item.start_day) <= 0, `${item.name} 的资格锁定判定不符`);
+        assert.ok(item.entry_rank >= 1 && item.entry_rank <= TEAM_COUNT, `${item.name} 的引用期名次越界`);
+    });
+    // 没带 day 的刷新（开局 / 年末）拿不到赛程，退回空态而不是给出过期数据 ——
+    // 曾经因为这里返回 null 被渲染层当成「本赛季已无比赛」，选项后卡片会假空。
+    assert.deepEqual(plain(game.status_snapshot(human).schedule), []);
     // 年度总结数据：十四维属性变化、Top20 榜与「必然退役」标记都要成形。
     const season_probe = game.season_payload(retire_player, world.compute_top20(), {
         rank: 10, move: 2,
@@ -881,6 +1227,7 @@ async function check() {
     // 赛事总结弹窗的数据（event_summary_payload）：总览榜单、MVP 与逐场逐图明细都要成形。
     function check_summary_payloads(payloads) {
         assert.ok(payloads.length > 0, "整段生涯没有产生赛事总结");
+        const round_scale = [];
         for (const p of payloads) {
             assert.ok(p.event.name && p.event.tier && p.event.from && p.event.to);
             assert.ok(p.result.champion && p.result.runner_up);
@@ -893,6 +1240,9 @@ async function check() {
             assert.ok(p.rating_board.every((e, i) => i === 0 || p.rating_board[i - 1].rating >= e.rating));
             assert.ok(p.kill_board.every((e, i) => i === 0 || p.kill_board[i - 1].kills >= e.kills));
             assert.ok(p.you.team && p.you.placement && p.you.maps > 0);
+            // 本站积分：逐场变化的求和 === 合计，且「站前 + 本站变化 = 站末」自洽。
+            assert.equal(p.detail.reduce((sum, m) => sum + m.elo, 0), p.you.elo_total, "逐场积分之和与本站合计不一致");
+            assert.equal(p.you.season_before + p.you.elo_total, p.you.season_after, "站前 + 本站变化 ≠ 站末");
             // 逐场逐图明细：每图双方各 5 行，玩家恰好出现在我方一条。
             assert.ok(p.detail.length > 0, "玩家参赛却没有任何逐场记录");
             // 同一站里同一个赛程标签最多出现一次（瑞士轮各轮、淘汰赛各轮都不会重打）。
@@ -917,6 +1267,9 @@ async function check() {
             }
             for (const match of p.detail) {
                 assert.ok(match.stage && match.opponent && match.score.length === 2);
+                // 每场都结算出一条整数积分，方向与胜负一致，且取整不会把一场胜负抹成 0。
+                assert.ok(Number.isInteger(match.elo) && match.elo !== 0, `${p.event.name} 的 ${match.stage} 积分变化异常`);
+                assert.equal(match.elo > 0, match.won, `${p.event.name} 的 ${match.stage} 积分方向与胜负不符`);
                 assert.ok(match.maps.length >= 1 && match.maps.length <= 5);
                 for (const mp of match.maps) {
                     assert.equal(mp.mine.length, 5);
@@ -927,18 +1280,74 @@ async function check() {
                         assert.ok(row.rating >= 0.20 && row.rating <= 2.20);
                         assert.ok(row.adr >= 15 && row.adr <= 165);
                     }
+                    // 单图比分必须遵守 MR12：常规时间先到 13 胜（负方 0～11）；
+                    // 12-12 才进加时，每段加时双方各 3 回合、先到 4 分，终分 16-14 / 19-16 …
+                    const [ms, os] = mp.score;
+                    const hi = Math.max(ms, os);
+                    const lo = Math.min(ms, os);
+                    assert.equal(mp.won, ms > os, "单图比分与单图胜负不一致");
+                    if (mp.overtimes === 0) {
+                        assert.equal(hi, 13, "常规时间的胜方应为 13 分");
+                        assert.ok(lo <= 11, `常规时间负方回合数 ${lo} 超过 11`);
+                    } else {
+                        assert.equal(hi, 16 + 3 * (mp.overtimes - 1),
+                            `加时终分 ${ms}-${os} 与 ${mp.overtimes} 个加时不符`);
+                        assert.ok(hi - lo >= 2 && hi - lo <= 4, `加时分差 ${hi - lo} 不在 2～4 之间`);
+                        assert.ok(lo >= 12, `加时负方回合数 ${lo} 小于 12`);
+                    }
+                    // 单图总击杀的粗略安全带（现实约每回合 6.7 次）。上下界都很松，只挡「击杀
+                    // 被写死成每图固定值」这类量级错误；真正的「随回合数缩放」由下面的分组比对来守。
+                    const rounds = ms + os;
+                    const total_kills = [...mp.mine, ...mp.theirs].reduce((sum, row) => sum + row.kills, 0);
+                    round_scale.push([rounds, total_kills, total_kills / 10 / rounds]);
+                    assert.ok(total_kills >= rounds * 2 && total_kills <= rounds * 11,
+                        `单图总击杀 ${total_kills} 与 ${rounds} 回合不相称`);
                 }
             }
         }
+        // 计数类数据必须跟着回合数走：把整段生涯的图按长短分组，**整图总击杀**要随回合数抬升。
+        // 注意不能比「每回合击杀」——速胜图多是强弱悬殊，强队刷得凶，每回合击杀反而更高；
+        // 真正该守住的是总击杀这个绝对量（历史实现里它是每图固定值，与回合数无关）。
+        const short = round_scale.filter(([rounds]) => rounds <= 19);
+        const long = round_scale.filter(([rounds]) => rounds >= 25);
+        assert.ok(short.length > 20 && long.length > 20,
+            `样本不足：短图 ${short.length}、长图 ${long.length}`);
+        const mean_of = pick => list => list.reduce((sum, row) => sum + pick(row), 0) / list.length;
+        const mean_kills = mean_of(row => row[1]);
+        assert.ok(mean_kills(long) > mean_kills(short) * 1.3,
+            `长图总击杀应明显高于短图：短图 ${mean_kills(short).toFixed(0)}、长图 ${mean_kills(long).toFixed(0)}`);
+        // 每回合击杀的整体水平也要落在真实区间（现实约 0.68）。太松会让「人均 20 杀」这种
+        // 不可能的数据溜过去，太紧则说明常数被改崩了。
+        const overall = mean_of(row => row[2])(round_scale);
+        assert.ok(overall >= 0.55 && overall <= 0.85,
+            `每回合场均击杀 ${overall.toFixed(3)} 偏离真实水平（约 0.68）`);
     }
 
     // 结构化日志（io.log）：年份抬头与逐日条目都带日期与类型，且每年清空只留当年。
+    // 练习赛只在日志里留一行摘要（不弹窗口），且状态确实会随表现升降（否则机制对玩家不可见）。
     function check_log_entries(entries) {
         assert.ok(entries.length > 0, "整段生涯没有产生结构化日志");
         assert.ok(entries.every(entry => entry.kind && entry.date &&
             Array.isArray(entry.lines) && entry.lines.length), "日志条目缺字段");
         assert.equal(entries.filter(entry => entry.kind === "year").length, 1, "每年清空后应只剩当年");
         assert.ok(entries.some(entry => ["match", "idle", "event"].includes(entry.kind)));
+        // 赛程播报：整段生涯里，名次的变化必须真的产生过 notice 条目，且同一天允许出现多条
+        // 不同类型（事件行 + 播报行同一天），日期列重复但条目互不覆盖。
+        const notices = entries.filter(entry => entry.kind === "notice");
+        assert.ok(notices.length > 0, "整段生涯没有产生赛程播报");
+        assert.ok(notices.every(entry => /(可参加|已失去|你所在战队已锁定)/.test(
+            entry.lines.join("").replace(/\x1b\[[0-9;]*m/g, ""))), "赛程播报内容不符");
+        const by_date = new Map();
+        for (const entry of entries) by_date.set(entry.date, (by_date.get(entry.date) || 0) + 1);
+        assert.ok([...by_date.values()].some(count => count > 1), "同一天应当能容纳多条不同类型的日志");
+        const practice_lines = entries.flatMap(entry => entry.lines)
+            .map(text => text.replace(/\x1b\[[0-9;]*m/g, ""))
+            .filter(text => text.startsWith("【练习赛】"));
+        assert.ok(practice_lines.length > 0, "整段生涯没有产生练习赛日志");
+        assert.ok(practice_lines.every(text => /^【练习赛】.+ (战胜|负于) .+  \(\d:\d\)   Rating \d\.\d\d/
+            .test(text)), "练习赛日志格式不符");
+        assert.ok(practice_lines.some(text => text.includes("状态↑") || text.includes("状态↓")),
+            "整段生涯里练习赛从未改变过状态（机制对玩家不可见）");
     }
 
     // —— 完整生涯：积分、名次、数据、历史与退役都要自洽 —— //
@@ -973,9 +1382,9 @@ async function check() {
         // 出战站数与年度荣誉数量一致，年度 Rating 条数与出战站数一致。
         assert.ok(player.history.every(y => y.titles <= y.n));
         check_world(player.world, player);
-        // 赛季结束时全部队伍积分仍是守恒的。
+        // 累积制不守恒：赛季末总积分高于起跑线（每队仍各自被限制在合法区间内）。
         const sum = player.world.teams.reduce((s2, t) => s2 + t.rating, 0);
-        assert.ok(Math.abs(sum - game.START_RATING * TEAM_COUNT) < 1, `赛季末总积分 ${sum}`);
+        assert.ok(sum > game.START_RATING * TEAM_COUNT, `赛季末总积分 ${sum} 未体现累积`);
         if (seed === 0) {
             check_summary_payloads(payloads);
             check_log_entries(log_entries);
@@ -998,7 +1407,7 @@ async function check() {
 
     console.log("通过：时间系统与逐日赛历（18 站主赛 + 16 站地区赛、零冲突、周日收官）、"
         + "名额与分档、时间推进与玩家赛程、赛制与名次分布、逐图选手数据与赛事总结、"
-        + "赛季积分与实时名次、Top20 权重、补位池、属性与阵容、合同及退役、"
+        + "赛季积分与实时名次、Top20 权重、补位池、属性与阵容、转会邀约落点与留守磨合度、合同及退役、"
         + "14 段完整自动生涯与手动生涯检查。");
 }
 

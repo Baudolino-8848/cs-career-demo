@@ -32,6 +32,7 @@ const world_rank = document.querySelector("#world-rank");
 // 右栏：队伍成员与下一场比赛。
 const main_panel = document.querySelector(".main");
 const st_coach = document.querySelector("#st-coach");
+const st_chem = document.querySelector("#st-chem");
 const st_roster = document.querySelector("#st-roster");
 const st_roles = document.querySelector("#st-roles");
 const next_card = document.querySelector("#next-card");
@@ -115,10 +116,11 @@ function write_entry(entry) {
     output.scrollTop = output.scrollHeight;
 }
 
-// 生涯日志每年清空（新赛季开始时由 game.js 触发）。
+// 生涯日志每年清空（新赛季开始时由 game.js 触发）。跨年后赛程重排，滑块也回到默认位置。
 function clear_log() {
     output.replaceChildren();
     output.scrollTop = 0;
+    sched_key = null;
 }
 
 // 建节点的小工具：文字一律走 textContent，快照里的 ID / 队名不会被当作 HTML 执行。
@@ -129,11 +131,9 @@ function el(tag, className = "", text = null) {
     return node;
 }
 
-// 属性分两组渲染，与 data.js 的 ATTR_BASE_KEYS / ATTR_PERF_KEYS 保持一致。
-const ATTR_GROUPS = [
-    {label: "基础 · 硬件", keys: () => ATTR_BASE_KEYS},
-    {label: "表现 · 打成成绩", keys: () => ATTR_PERF_KEYS},
-];
+// 属性分两组渲染（基础 / 表现），与 data.js 的 ATTR_BASE_KEYS / ATTR_PERF_KEYS 保持一致。
+// 两组之间只保留间距，不再渲染分组标题。
+const ATTR_GROUPS = [ATTR_BASE_KEYS, ATTR_PERF_KEYS];
 
 // 属性条分档着色（0～100）：阈值 40 / 60 / 75，越高越「热」。样式类见 style.css 的 .fill.tN。
 function attr_tier(value) {
@@ -174,10 +174,9 @@ function renderStatus(s) {
     st_rank.textContent = `世界排名 ${s.world_rank}`;
 
     st_attrs.replaceChildren();
-    for (const group of ATTR_GROUPS) {
+    for (const keys of ATTR_GROUPS) {
         const box = el("div", "attr-group");
-        box.append(el("div", "micro", group.label));
-        for (const key of group.keys()) {
+        for (const key of keys) {
             const core = s.role_weights[key] >= 0.10;
             const row = el("div", "bar-row");
             const label = el("span", "lb");
@@ -207,7 +206,7 @@ function renderStatus(s) {
     }
 
     renderRoster(s);
-    renderNext(s);
+    renderSchedule(s);
 
     progress.hidden = false;
     world_rank.hidden = false;
@@ -217,9 +216,13 @@ function renderStatus(s) {
     syncPanelHeight();
 }
 
-// 右栏「队伍成员」：上场五人（玩家高亮）与位置标签，右上角是教练。
+// 右栏「队伍成员」：上场五人（玩家高亮）与位置标签，右上角是磨合度与教练。
 function renderRoster(s) {
     st_coach.replaceChildren(document.createTextNode("教练："), el("b", "", s.coach));
+    // 磨合度：数值 + 它对全队表现的修正（100% 是刚组建的中性基准）。
+    const bonus = s.chem_bonus || 0;
+    const sign_text = bonus > 0 ? `+${(bonus * 100).toFixed(1)}%` : `${(bonus * 100).toFixed(1)}%`;
+    st_chem.textContent = `磨合度 ${s.chemistry}% · 强度 ${sign_text}`;
     st_roster.replaceChildren();
     st_roles.replaceChildren();
     for (const member of s.roster) {
@@ -236,24 +239,116 @@ function renderRoster(s) {
     }
 }
 
-// 右栏「下一场比赛」：距今天数、赛事名、等级与日期；本赛季打完时提示结束。
-function renderNext(s) {
+// 右栏「可参加赛事」滑块：一屏一站，全年赛程（已打完的站在前、未开赛的站在后）。
+// 默认停在第一站未开赛的比赛，往前翻可回看今年打完的站；只显示「下一场」时无法看出
+// 赛程随名次变化，一屏一站把全年摊开，配合日志播报就不会再出现单站跳变。
+let sched_key = null;   // 记住当前展示的站（按赛事 key），面板重绘后尽量停在原地
+
+function renderSchedule(s) {
+    const list = s.schedule;
     next_card.replaceChildren();
-    if (!s.next) {
-        const head = el("div", "next-head");
-        head.append(el("span", "", "下一场比赛"));
-        next_card.append(head, el("div", "next-idle", "本赛季已无比赛"));
+
+    const head = el("div", "next-head");
+    head.append(el("span", "", "可参加赛事"));
+    next_card.append(head);
+    if (!list.length) {
+        next_card.append(el("div", "next-idle", "本赛季已无比赛"));
         return;
     }
-    const head = el("div", "next-head");
-    head.append(el("span", "", "下一场比赛"), el("span", "days", `距离天数：${s.next.days} 天`));
-    next_card.append(head);
-    const main = el("div", "next-main");
-    main.append(el("div", "n-name", s.next.name));
-    const tier = el("div", "n-tier");
-    tier.append(document.createTextNode("赛事等级："), el("b", "", s.next.tier));
-    main.append(tier, el("div", "n-date", `比赛日期 ${s.next.from} — ${s.next.to}`));
-    next_card.append(main);
+    const days = el("span", "days");
+    head.append(days);
+
+    // 默认停在第一站未开赛的比赛；全打完了就停在最近一场。若上一屏还在，重绘后停回原处。
+    const first_future = list.findIndex(item => !item.played);
+    let index = first_future >= 0 ? first_future : list.length - 1;
+    const kept = list.findIndex(item => item.key === sched_key);
+    if (kept >= 0) index = kept;
+
+    const viewport = el("div", "sched-viewport");
+    const prev = el("button", "sched-arrow", "‹");
+    const next = el("button", "sched-arrow", "›");
+    prev.type = next.type = "button";
+    prev.setAttribute("aria-label", "上一站");
+    next.setAttribute("aria-label", "下一站");
+    const clip = el("div", "sched-clip");
+    const track = el("div", "sched-track");
+
+    for (const item of list) {
+        const slide = el("div", "sched-slide" + (item.played ? " past" : ""));
+        const main = el("div", "sched-main");
+        main.append(el("div", "n-name", item.name));
+        const tier = el("div", "n-tier");
+        tier.append(document.createTextNode("赛事等级："), el("b", "", item.tier));
+        main.append(tier, el("div", "n-date", `比赛日期 ${item.from} — ${item.to}`));
+        if (item.played) {
+            // 已打完：本站名次与 Rating，外加重新打开赛事总结的入口（报告留到年末）。
+            const result = el("div", "n-result" + (item.place === "冠军" ? " champion" : ""));
+            result.append(document.createTextNode("最终名次："), el("b", "", item.place));
+            if (item.rating !== null) result.append(document.createTextNode(`   Rating ${item.rating.toFixed(2)}`));
+            main.append(result);
+            if (item.report) {
+                const report = el("button", "n-report", "查看赛事报告");
+                report.type = "button";
+                report.addEventListener("click", () => show_event_summary(item.report));
+                main.append(report);
+            }
+        } else {
+            // 资格状态：引用期（开赛日前 4 周）一过这一站才定死，在那之前只是按当下名次的推断。
+            const qual = el("div", "n-qual " + (item.locked ? "locked" : "pending"));
+            qual.textContent = item.locked
+                ? "你所在战队已锁定参赛名额"
+                : `资格待定 · 引用期 ${item.ref_label} 确定名额`;
+            main.append(qual);
+        }
+        slide.append(main);
+        track.append(slide);
+    }
+    clip.append(track);
+    viewport.append(prev, clip, next);
+    next_card.append(viewport);
+
+    const foot = el("div", "sched-foot");
+    const dots = el("span", "sched-dots");
+    const count = el("span", "sched-count", "");
+    for (let i = 0; i < list.length; i++) {
+        const dot = el("i");
+        dot.addEventListener("click", () => go(i));
+        dots.append(dot);
+    }
+    foot.append(dots, count);
+    next_card.append(foot);
+
+    const go = target => {
+        index = Math.max(0, Math.min(list.length - 1, target));
+        sched_key = list[index].key;
+        track.style.transform = `translateX(${-index * 100}%)`;
+        count.textContent = `${index + 1} / ${list.length}`;
+        [...dots.children].forEach((dot, i) => dot.classList.toggle("on", i === index));
+        prev.disabled = index === 0;
+        next.disabled = index === list.length - 1;
+        const item = list[index];
+        days.textContent = first_future < 0 ? "本赛季赛程已结束"
+            : item.played ? "已结束" : `距下一场 ${item.days} 天`;
+    };
+    prev.addEventListener("click", () => go(index - 1));
+    next.addEventListener("click", () => go(index + 1));
+
+    // 拖拽翻页：横向位移超过 40px 才翻，否则回弹。监听与指针捕获都只挂在裁剪区上——
+    // 裁剪区不含箭头，不会吃掉按钮的 click；挂在 window 上则每次重绘都会多留一个监听器。
+    clip.style.touchAction = "pan-y";
+    let start_x = null;
+    clip.addEventListener("pointerdown", event => {
+        start_x = event.clientX;
+        clip.setPointerCapture(event.pointerId);
+    });
+    clip.addEventListener("pointerup", event => {
+        if (start_x === null) return;
+        const dx = event.clientX - start_x;
+        start_x = null;
+        go(Math.abs(dx) >= 40 ? index + (dx < 0 ? 1 : -1) : index);
+    });
+
+    go(index);
 }
 
 // 右栏高度跟随左栏内容：底部与左栏的「退役」按钮对齐，日志在卡片内部滚动。
@@ -285,6 +380,10 @@ function updateProgress(day, total) {
  * Swing 由 game.js 随 payload 逐图给出（与 swing_of 同源），这里只做平均与格式化。
  * ========================================================================== */
 const ev_swing_text = value => (value >= 0 ? "+" : "") + value.toFixed(2) + "%";
+
+// 赛季积分变化：正数带 +，零为中性；涨 / 跌 / 平三档决定配色。
+const elo_cls = value => (value > 0 ? "up" : value < 0 ? "dn" : "flat");
+const elo_text = value => (value > 0 ? "+" : "") + value;
 const ev_rating_class = rating => (rating >= 1.25 ? "r-hi" : rating >= 1.00 ? "r-mid" : "r-low");
 
 // 总览：赛事前八名、赛事 MVP、你的表现，以及全场 Rating / 击杀 Top10。
@@ -335,6 +434,11 @@ function overviewNode(p) {
     const rate = el("div", "you-place");
     rate.append(document.createTextNode("Rating  "), el("b", "", p.you.rating.toFixed(2)));
     you.append(place, rate);
+    // 赛季积分：站末值 + 本站变化（小尾巴），变化等于逐场明细的求和。
+    const season = el("div", "you-place");
+    season.append(document.createTextNode("赛季积分  "), el("b", "", String(p.you.season_after)));
+    season.append(el("span", "elo-tag " + elo_cls(p.you.elo_total), elo_text(p.you.elo_total)));
+    you.append(season);
     const nums = el("div", "you-nums");
     for (const [label, value] of [["击杀", p.you.kills], ["助攻", p.you.assists], ["死亡", p.you.deaths]]) {
         const box = el("div", "you-num");
@@ -385,6 +489,10 @@ function detailNode(p, state) {
     const place = el("div", "team-place");
     place.append(document.createTextNode("队伍表现  "), el("b", "", p.you.placement));
     team.append(place);
+    // 本站积分变化：整站累计，数值上等于下面每张比赛卡的积分之和。
+    const teamElo = el("div", "team-elo " + elo_cls(p.you.elo_total));
+    teamElo.append(document.createTextNode("本站积分"), el("b", "", elo_text(p.you.elo_total)));
+    team.append(teamElo);
     left.append(team);
 
     const list = el("div", "match-list");
@@ -392,9 +500,18 @@ function detailNode(p, state) {
         const box = el("div", "match" + (index === state.matchIdx ? " on" : ""));
         box.append(el("div", "stage", match.stage));
         const line = el("div", "line");
-        line.append(el("b", "", p.you.team), document.createTextNode(` vs ${match.opponent}  `));
-        line.append(el("span", "res " + (match.won ? "win" : "lose"), match.won ? "胜" : "负"));
+        line.append(el("b", "", p.you.team), document.createTextNode(` vs ${match.opponent}`));
         box.append(line);
+        // 系列赛比分（我方在前）：和右侧逐图比分一起构成这一场的完整结果。
+        const foot = el("div", "foot");
+        const won = match.won ? "win" : "lose";
+        foot.append(el("b", "mscore " + won, `${match.score[0]} - ${match.score[1]}`));
+        foot.append(el("span", "res " + won, match.won ? "胜" : "负"));
+        // 这一场结算出来的赛季积分变化：贴右显示，与左侧顶部的本站积分对得上。
+        const elo = el("span", "elo " + elo_cls(match.elo));
+        elo.append(document.createTextNode("积分"), el("b", "", elo_text(match.elo)));
+        foot.append(elo);
+        box.append(foot);
         box.addEventListener("click", () => {
             state.matchIdx = index;
             state.mapIdx = "all";
@@ -412,12 +529,15 @@ function detailNode(p, state) {
     tabs.append(mapTabNode("全场表现", "all", p, state));
     main.append(tabs);
 
+    // 切到某一图时，比分板顶在表格上方；全场表现没有单一比分，照旧只有表头。
+    if (state.mapIdx !== "all") main.append(mapScoreNode(p, match, match.maps[state.mapIdx], state.mapIdx));
+
     const wrap = el("div", "stat-wrap");
     if (state.mapIdx === "all") {
         wrap.append(statTableNode(match, match.maps, "全场表现", `共 ${match.maps.length} 图`, p));
     } else {
         const map = match.maps[state.mapIdx];
-        wrap.append(statTableNode(match, [map], `图${"一二三四五"[state.mapIdx]}`, map.won ? "本图获胜" : "本图失利", p));
+        wrap.append(statTableNode(match, [map], null, null, p));
     }
     main.append(wrap);
     grid.append(main);
@@ -434,11 +554,38 @@ function mapTabNode(label, index, p, state) {
     return button;
 }
 
+// 单图比分板：我方在左、对手在右，中间是大号比分（常规时间 13-x，打到 12-12 则是加时终分）。
+// 只在切到某一图时出现，是这一屏最显眼的元素；表格 caption 已省掉，避免重复报一遍图号与胜负。
+function mapScoreNode(p, match, map, mapIdx) {
+    const box = el("div", "map-score");
+    const head = el("div", "ms-head");
+    head.append(el("span", "ms-map", `图${"一二三四五"[mapIdx]}`));
+    head.append(el("span", "tag " + (map.won ? "green" : "red"), map.won ? "本图获胜" : "本图失利"));
+    box.append(head);
+
+    const line = el("div", "ms-line");
+    line.append(el("div", "ms-side", p.you.team));
+    const nums = el("div", "ms-nums");
+    nums.append(el("b", map.score[0] > map.score[1] ? "hi" : "", String(map.score[0])));
+    nums.append(el("span", "colon", ":"));
+    nums.append(el("b", map.score[1] > map.score[0] ? "hi" : "", String(map.score[1])));
+    line.append(nums);
+    line.append(el("div", "ms-side right", match.opponent));
+    box.append(line);
+
+    if (map.overtimes) {
+        box.append(el("div", "ms-ot", map.overtimes > 1 ? `加时 ×${map.overtimes}（MR3）` : "加时（MR3）"));
+    }
+    return box;
+}
+
 function statTableNode(match, maps, caption, tag, p) {
     const table = el("table", "stat-table");
-    const cap = el("caption");
-    cap.append(document.createTextNode(caption), el("span", "tag", tag));
-    table.append(cap);
+    if (caption) {
+        const cap = el("caption");
+        cap.append(document.createTextNode(caption), el("span", "tag", tag));
+        table.append(cap);
+    }
     const head = el("thead");
     const row = el("tr");
     for (const label of ["选手", "K/D/A", "Swing", "ADR", "KAST", "Rating"]) row.append(el("th", "", label));
@@ -492,7 +639,8 @@ function drawEventSummary(p, state) {
     ev_body.scrollTop = 0;
 }
 
-// 打开窗口：默认总览，可切详细数据或按 Esc 关闭；关闭后清空内容并退场，之后无法再查看。
+// 打开窗口：默认总览，可切详细数据或按 Esc 关闭；关闭后清空内容并退场。
+// 当年打过的站仍留在右栏赛程滑块上，可从那里的「查看赛事报告」重新打开（数据由 game.js 留到年末）。
 function show_event_summary(payload) {
     return new Promise(resolve => {
         const state = {view: "overview", matchIdx: 0, mapIdx: "all"};

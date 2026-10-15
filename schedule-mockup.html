@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可参加赛事滑块 · 静态设计稿</title>
+<style>
+/* ============================================================
+   可参加赛事滑块 + 赛程播报 —— 静态设计稿（自包含，假数据）
+   配色沿用 style.css 的冷色令牌：浅灰白底 + 单一青色强调。
+   本页只演示两件事：
+     1) 右栏「下一场比赛」卡改成可左右切换的赛事滑块；
+     2) 生涯日志新增 notice（赛程播报）行，并演示同一天多行不同 kind。
+   ============================================================ */
+:root{
+  --bg:#F6F7F9;
+  --surface:#FFFFFF;
+  --surface-2:#F9FAFB;
+  --surface-3:#F1F3F6;
+  --line:#E7EAEF;
+  --line-strong:#D6DBE2;
+
+  --ink:#14171A;
+  --ink-2:#5B6470;
+  --ink-3:#9AA3AF;
+  --ink-4:#C3C9D2;
+
+  --accent:#06B6D4;
+  --accent-d:#0E7490;
+  --accent-soft:#ECFEFF;
+  --accent-line:#A5F3FC;
+
+  --pos:#059669;  --pos-soft:#ECFDF5;
+  --warn:#D97706; --warn-soft:#FFFBEB;
+  --neg:#DC2626;  --neg-soft:#FEF2F2;
+  --violet:#7C3AED; --violet-soft:#F5F3FF;
+
+  --r-xs:6px; --r-sm:9px; --r-md:12px; --r-lg:16px; --r-xl:22px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(16,24,40,.04);
+  --sh-2:0 2px 8px rgba(16,24,40,.06);
+  --sh-3:0 8px 24px rgba(16,24,40,.08);
+
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;padding:20px;
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.mock-bar{
+  max-width:1120px;margin:0 auto 16px;display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--r-md);padding:10px 14px;
+}
+.mock-bar b{font-size:12px;color:var(--ink-2)}
+.mock-switch{margin-left:auto;display:flex;gap:6px}
+.mock-switch button{
+  font:inherit;font-size:11.5px;font-weight:600;padding:5px 13px;border-radius:var(--r-pill);
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer;
+}
+.mock-switch button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-lg);box-shadow:var(--sh-3);padding:16px}
+.card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card-head h3{margin:0;font-size:12.5px}
+.card-head .hint{margin-left:auto;font-size:10px;color:var(--ink-3);display:flex;align-items:center;gap:4px}
+.card-head .hint i{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block}
+
+/* 顶部两卡：队伍成员 + 可参加赛事滑块 */
+.top-row{display:grid;grid-template-columns:minmax(0,1fr) 272px;gap:14px}
+.team-card .coach{margin-left:auto;font-size:11px;color:var(--ink-2)}
+.team-card .coach b{color:var(--violet);font-weight:700}
+.members{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.member{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 6px;text-align:center;background:var(--surface-2)}
+.member.me{border-color:var(--accent-line);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+.member .m-id{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member .m-age{font-size:10px;color:var(--ink-3);margin-top:1px}
+.member .m-ovr{font-size:17px;font-weight:800;color:var(--accent-d);font-variant-numeric:tabular-nums;margin-top:3px;line-height:1.1}
+.member .m-ovr small{font-size:9px;color:var(--ink-3);font-weight:600;margin-left:2px}
+.member .m-value{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);font-size:10px;font-weight:700;color:var(--warn);font-variant-numeric:tabular-nums}
+.member .m-value span{font-size:9px;font-weight:600;color:var(--ink-3);margin-right:3px}
+.roles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
+.roles span{text-align:center;font-size:10.5px;color:var(--ink-2);background:var(--surface-3);border-radius:var(--r-pill);padding:3px 0}
+
+/* ============================================================
+   可参加赛事滑块（本次新增，接入时抄进 style.css 的「下一场比赛」段）
+   ============================================================ */
+.next-card{display:flex;flex-direction:column;gap:8px}
+.next-head{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.next-head .days{margin-left:auto;font-size:10.5px;color:var(--warn);font-weight:700}
+/* 视口：左右箭头夹住中间的裁剪区；裁剪区 overflow:hidden，滑轨整体按一屏一站的宽度平移。
+   滑轨宽度 = 裁剪区宽度（不是 4 屏之和），因此 translateX(-100%) 恰好翻一屏。 */
+.sched-viewport{display:flex;align-items:stretch;gap:2px}
+.sched-clip{flex:1;min-width:0;overflow:hidden}
+.sched-track{display:flex;width:100%;transition:transform .26s cubic-bezier(.2,.8,.3,1);will-change:transform}
+.sched-arrow{
+  flex:none;width:22px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--surface);color:var(--ink-3);font:inherit;font-size:15px;line-height:1;cursor:pointer;
+  display:grid;place-items:center;padding:0;transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.sched-arrow:hover:not(:disabled){border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-d)}
+.sched-arrow:disabled{opacity:.35;cursor:default}
+/* 一屏一站：flex:0 0 100% 相对滑轨宽度；overflow:hidden 兜住超长赛事名 */
+.sched-slide{flex:0 0 100%;min-width:0;overflow:hidden;display:flex}
+.sched-main{
+  flex:1;min-width:0;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;
+  text-align:center;background:var(--surface-2);
+}
+.sched-slide .n-name{font-size:15px;font-weight:800;letter-spacing:-.01em;line-height:1.3}
+.sched-slide .n-tier,.sched-slide .n-date{
+  margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  padding:4px 6px;font-size:10px;color:var(--ink-2);background:var(--surface);
+}
+.sched-slide .n-tier b{color:var(--violet);font-weight:700}
+.sched-slide .n-qual{
+  margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  padding:4px 6px;font-size:10px;background:var(--surface);
+}
+.sched-slide .n-qual.pending{color:var(--warn);font-weight:700}
+.sched-slide .n-qual.locked{color:var(--accent-d);font-weight:700;border-color:var(--accent-line);background:var(--accent-soft)}
+/* 已结束的站：白底（与「未来」的浅灰底区分）+ 名次 + 重看报告的入口 */
+.sched-slide.past .sched-main{background:var(--surface)}
+.sched-slide .n-result{
+  margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  padding:4px 6px;font-size:10px;background:var(--surface-2);color:var(--ink-2);
+}
+.sched-slide .n-result b{font-weight:800;color:var(--ink)}
+.sched-slide .n-result.champion b{color:var(--warn)}
+.sched-slide .n-report{
+  margin-top:7px;width:100%;border:1px solid var(--accent-line);border-radius:var(--r-sm);
+  background:var(--accent-soft);color:var(--accent-d);font:inherit;font-size:10.5px;font-weight:700;
+  padding:6px;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.sched-slide .n-report:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+/* 底部：分页圆点 + 计数 */
+.sched-foot{display:flex;align-items:center;gap:8px;justify-content:center}
+.sched-dots{display:flex;gap:5px}
+.sched-dots i{width:5px;height:5px;border-radius:50%;background:var(--ink-4);cursor:pointer;transition:background .15s ease,transform .15s ease}
+.sched-dots i.on{background:var(--accent);transform:scale(1.25)}
+.sched-count{font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.next-idle{font-size:11.5px;color:var(--ink-3);text-align:center;padding:14px 0}
+
+/* ============================================================
+   生涯日志（结构照搬 style.css，只多一条 .k-notice）
+   ============================================================ */
+.log{display:flex;flex-direction:column}
+.log-item{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;padding:8px 2px}
+.log-item + .log-item{border-top:1px solid var(--line)}
+.log-item .date{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);padding-top:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.log-item .lines{min-width:0;font-size:12.5px;line-height:1.62;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:anywhere}
+.log-item .lines p{margin:0}
+.log-item.k-idle .lines{color:var(--ink-3)}
+.log-item.k-match{background:var(--surface-2)}
+.log-item.k-year{border-top:none;padding:14px 2px 8px}
+.log-item.k-year .lines{color:var(--ink);font-weight:700;font-size:13px}
+/* 新增：赛程播报行。青色细底 + 左侧强调线，与浅底的赛事行、橙字的 event 行区分；
+   同一天可以出现多条（图里 3/1 就有一行 event + 两行 notice）。 */
+.log-item.k-notice{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent-line)}
+.log-item.k-notice .lines{color:var(--accent-d)}
+/* 赛事报告二级窗口（设计稿占位，只画个壳） */
+.modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center}
+.modal[hidden]{display:none}
+.modal .mask{position:absolute;inset:0;background:rgba(16,24,40,.42)}
+.modal .panel{
+  position:relative;width:min(560px,92vw);background:var(--surface);border-radius:var(--r-lg);
+  box-shadow:var(--sh-3);padding:20px;display:flex;flex-direction:column;gap:10px;
+}
+.modal h2{margin:0;font-size:15px}
+.modal .sub{font-size:11.5px;color:var(--ink-3);font-family:var(--mono)}
+.modal .ph{font-size:12.5px;color:var(--ink-2);border:1px dashed var(--line-strong);border-radius:var(--r-md);padding:18px;text-align:center;background:var(--surface-2)}
+.modal .close{align-self:flex-end;border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--r-sm);font:inherit;font-size:12px;padding:7px 16px;cursor:pointer}
+
+.text-cyan{color:var(--accent-d)}
+.text-yellow{color:var(--warn)}
+.text-green{color:var(--pos)}
+.text-dim{color:var(--ink-3)}
+.text-magenta{color:var(--violet)}
+</style>
+</head>
+<body>
+
+<div class="mock-bar">
+  <b>可参加赛事滑块 · 静态设计稿</b>
+  <span style="font-size:11.5px;color:var(--ink-3)">切换卡片状态查看：</span>
+  <div class="mock-switch">
+    <button data-state="mixed" class="on">赛季中（默认下一场）</button>
+    <button data-state="locked">名额已锁定</button>
+    <button data-state="alldone">赛季打完</button>
+    <button data-state="empty">无赛程</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="top-row">
+    <div class="card team-card">
+      <div class="card-head">
+        <h3>队伍成员</h3>
+        <span class="coach">教练：<b>Drift eSports 教练</b></span>
+      </div>
+      <div class="members">
+        <div class="member"><div class="m-id">Petar</div><div class="m-age">24 岁</div><div class="m-ovr">41<small>总评</small></div><div class="m-value"><span>身价</span>8 万</div></div>
+        <div class="member"><div class="m-id">drov</div><div class="m-age">28 岁</div><div class="m-ovr">40<small>总评</small></div><div class="m-value"><span>身价</span>4 万</div></div>
+        <div class="member"><div class="m-id">vyso</div><div class="m-age">20 岁</div><div class="m-ovr">37<small>总评</small></div><div class="m-value"><span>身价</span>3 万</div></div>
+        <div class="member"><div class="m-id">Ralk</div><div class="m-age">25 岁</div><div class="m-ovr">44<small>总评</small></div><div class="m-value"><span>身价</span>15 万</div></div>
+        <div class="member me"><div class="m-id">Nice</div><div class="m-age">16 岁</div><div class="m-ovr">43<small>总评</small></div><div class="m-value"><span>身价</span>10 万</div></div>
+      </div>
+      <div class="roles"><span>辅助</span><span>狙击手</span><span>指挥</span><span>步枪手</span><span>突破手</span></div>
+    </div>
+
+    <!-- 可参加赛事滑块卡：由 game.js 的 schedule 快照驱动 -->
+    <div class="card next-card" id="next-card"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>生涯日志</h3><span class="hint"><i></i>本赛季</span></div>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<div class="modal" id="report-modal" hidden>
+  <div class="mask"></div>
+  <div class="panel">
+    <h2 id="report-title">赛事报告</h2>
+    <div class="sub" id="report-date"></div>
+    <div class="ph">（设计稿占位）真实实现复用赛事总结二级窗口：总览 / 详细数据 / 关闭</div>
+    <button class="close" id="report-close" type="button">关闭</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+
+/* 假数据：一站 = 右栏滑块的一屏。
+   已结束的站（played）带名次与本站 Rating；未来的站带资格状态。
+   顺序按日期升序，默认停在第一站「未来的」赛程。 */
+const SCHEDULES = {
+  // 赛季中：打过的站在前，下一场及之后的站在后（默认停在「CCT 亚太区」）
+  mixed: [
+    {name: "裂变天地 上海", tier: "A 级", from: "2026/3/1", to: "2026/3/6", days: -118, played: true, place: "八强", rating: "1.09"},
+    {name: "CCT 欧洲区", tier: "地区赛", from: "2026/4/19", to: "2026/4/24", days: -69, played: true, place: "四强", rating: "1.21"},
+    {name: "ESEA Advanced 欧洲区", tier: "地区赛", from: "2026/6/14", to: "2026/6/19", days: -13, played: true, place: "冠军", rating: "1.34"},
+    {name: "CCT 亚太区", tier: "B 级", from: "2026/11/3", to: "2026/11/8", days: 42, locked: false, ref_label: "2026/10/5", rank: 68},
+    {name: "Funspark ULTI 亚洲区", tier: "B 级", from: "2026/11/21", to: "2026/11/25", days: 60, locked: false, ref_label: "2026/10/23", rank: 68},
+    {name: "ESEA Advanced 亚洲区", tier: "地区赛", from: "2026/12/9", to: "2026/12/14", days: 78, locked: false, ref_label: "2026/11/11", rank: 68},
+  ],
+  // 名额已锁定：引用期已过，资格定死（引用期名次一并展示在日志播报里）
+  locked: [
+    {name: "ESEA Advanced 欧洲区", tier: "地区赛", from: "2026/6/14", to: "2026/6/19", days: -13, played: true, place: "冠军", rating: "1.34"},
+    {name: "CCT 亚太区", tier: "B 级", from: "2026/11/3", to: "2026/11/8", days: 12, locked: true, ref_label: "2026/10/5", rank: 70},
+    {name: "Funspark ULTI 亚洲区", tier: "B 级", from: "2026/11/21", to: "2026/11/25", days: 30, locked: false, ref_label: "2026/10/23", rank: 68},
+  ],
+  // 赛季打完：没有未来赛事，默认停在最近一场
+  alldone: [
+    {name: "CCT 欧洲区", tier: "地区赛", from: "2026/4/19", to: "2026/4/24", days: -69, played: true, place: "四强", rating: "1.21"},
+    {name: "ESEA Advanced 欧洲区", tier: "地区赛", from: "2026/6/14", to: "2026/6/19", days: -13, played: true, place: "冠军", rating: "1.34"},
+    {name: "CCT 亚太区", tier: "B 级", from: "2026/11/3", to: "2026/11/8", days: 42, played: true, place: "小组出局", rating: "0.88"},
+  ],
+  empty: [],
+};
+
+let index = 0;
+
+function render(state) {
+  const list = SCHEDULES[state];
+  // 默认停在第一站「未来」的赛程；全打完了就停在最近一场。
+  const first_future = list.findIndex(item => !item.played);
+  index = first_future >= 0 ? first_future : Math.max(0, list.length - 1);
+
+  const card = document.getElementById("next-card");
+  card.replaceChildren();
+
+  const head = el("div", "next-head");
+  head.append(el("span", "", "可参加赛事"));
+  card.append(head);
+
+  if (!list.length) {
+    card.append(el("div", "next-idle", "本赛季已无比赛"));
+    return;
+  }
+  const days = el("span", "days");
+  head.append(days);
+
+  const viewport = el("div", "sched-viewport");
+  const prev = el("button", "sched-arrow prev", "‹");
+  const next = el("button", "sched-arrow next", "›");
+  prev.type = next.type = "button";
+  const clip = el("div", "sched-clip");
+  const track = el("div", "sched-track");
+  for (const item of list) {
+    const slide = el("div", "sched-slide" + (item.played ? " past" : ""));
+    const main = el("div", "sched-main");
+    main.append(el("div", "n-name", item.name));
+    const tier = el("div", "n-tier");
+    tier.append(document.createTextNode("赛事等级："), el("b", "", item.tier));
+    main.append(tier, el("div", "n-date", `比赛日期 ${item.from} — ${item.to}`));
+    if (item.played) {
+      // 已结束：名次 + 本站 Rating，外加重新打开赛事总结的入口
+      const result = el("div", "n-result" + (item.place === "冠军" ? " champion" : ""));
+      result.append(document.createTextNode("最终名次："), el("b", "", item.place),
+        document.createTextNode(`   Rating ${item.rating}`));
+      const report = el("button", "n-report", "查看赛事报告");
+      report.type = "button";
+      report.addEventListener("click", () => open_report(item));
+      main.append(result, report);
+    } else {
+      const qual = el("div", "n-qual " + (item.locked ? "locked" : "pending"));
+      qual.textContent = item.locked
+        ? "你所在战队已锁定参赛名额"
+        : `资格待定 · 引用期 ${item.ref_label} 确定名额`;
+      main.append(qual);
+    }
+    slide.append(main);
+    track.append(slide);
+  }
+  clip.append(track);
+  viewport.append(prev, clip, next);
+  card.append(viewport);
+
+  const foot = el("div", "sched-foot");
+  const count = el("span", "sched-count", "");
+  const dots = el("span", "sched-dots");
+  list.forEach((_, i) => {
+    const dot = el("i", "", "");
+    dot.addEventListener("click", () => go(i));
+    dots.append(dot);
+  });
+  foot.append(dots, count);
+  card.append(foot);
+
+  function go(target) {
+    index = Math.max(0, Math.min(list.length - 1, target));
+    track.style.transform = `translateX(${-index * 100}%)`;
+    count.textContent = `${index + 1} / ${list.length}`;
+    [...dots.children].forEach((dot, i) => dot.classList.toggle("on", i === index));
+    prev.disabled = index === 0;
+    next.disabled = index === list.length - 1;
+    const current = list[index];
+    days.textContent = current.played
+      ? (index === list.length - 1 ? "本赛季赛程已结束" : `本年第 ${index + 1} 站 · 已结束`)
+      : `距下一场 ${current.days} 天`;
+  }
+  prev.addEventListener("click", () => go(index - 1));
+  next.addEventListener("click", () => go(index + 1));
+  go(index);
+
+  /* 鼠标拖拽切换：横向位移超过 40px 才翻页，否则回弹。
+     监听与指针捕获都挂在裁剪区上（不含左右箭头），既不会抢掉按钮的 click，
+     也不会像挂在 window 上那样每次重绘都多留一个监听器。 */
+  clip.style.touchAction = "pan-y";
+  let startX = null;
+  clip.addEventListener("pointerdown", event => {
+    startX = event.clientX;
+    clip.setPointerCapture(event.pointerId);
+  });
+  clip.addEventListener("pointerup", event => {
+    if (startX === null) return;
+    const dx = event.clientX - startX;
+    startX = null;
+    if (Math.abs(dx) >= 40) go(index + (dx < 0 ? 1 : -1));
+    else go(index);
+  });
+}
+
+/* 设计稿占位：真实实现复用 app.js 的 show_event_summary(payload) 二级窗口 */
+function open_report(item) {
+  const modal = document.getElementById("report-modal");
+  document.getElementById("report-title").textContent = `${item.name} · 赛事报告`;
+  document.getElementById("report-date").textContent = `${item.from} — ${item.to}`;
+  modal.hidden = false;
+}
+document.getElementById("report-close").addEventListener("click", () => {
+  document.getElementById("report-modal").hidden = true;
+});
+
+/* 日志：演示同一天多条不同 kind（3/1 = event + 两条 notice + match） */
+function marked(node, parts) {
+  for (const [text, cls] of parts) {
+    if (cls) node.append(el("span", cls, text));
+    else node.append(document.createTextNode(text));
+  }
+}
+function entry(date, kind, parts) {
+  const row = el("div", "log-item k-" + kind);
+  row.append(el("span", "date", date));
+  const lines = el("div", "lines");
+  const p = el("p");
+  marked(p, parts);
+  lines.append(p);
+  row.append(lines);
+  document.getElementById("log").append(row);
+}
+entry("3/1", "event", [["【事件】体能训练日", "text-yellow"], [" · 你选择了「加练核心与灵敏」", "text-dim"]]);
+entry("3/1", "notice", [["根据当前排名战队排名 #68，可参加 ", ""], ["CCT 亚太区", "text-cyan"], ["，比赛日期 2026/11/3 -- 2026/11/8，名额将在引用期 2026/10/5 确定", ""]]);
+entry("3/1", "notice", [["你所在战队已锁定 ", ""], ["ESEA Advanced 亚洲区", "text-cyan"], [" 参赛名额（比赛日期 2026/12/9 -- 2026/12/14，引用期 2026/11/11 世界 #70）", ""]]);
+entry("3/1", "match", [["【练习赛】Drift eSports 负于 Tempest Forge  (1:2)  Rating 0.93", "text-dim"]]);
+entry("3/2 – 3/7", "idle", [["无事发生", ""]]);
+
+document.querySelectorAll(".mock-switch button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".mock-switch button").forEach(b => b.classList.toggle("on", b === btn));
+    render(btn.dataset.state);
+  });
+});
+render("mixed");
+</script>
+</body>
+</html>

@@ -176,6 +176,9 @@ class Player {
         // 本站/本年赛事统计：ev_stats 以赛事 key 为索引，记录该站的地图数、击杀、助攻、
         // ADR 与 KAST 等统计，供赛后「赛事总结」与年度击杀榜读取；每年清空。
         this.ev_stats = {};
+        // 本年已打完站点的完整报告（event_summary_payload），以赛事 key 为索引。右栏赛程滑块上
+        // 「查看赛事报告」要把当年打过的站重新打开，因此这份数据要留到年末；每年清空。
+        this.yr_reports = {};
 
         // 生涯累计：年度荣誉、赛事 MVP、排名次数和 Rating 历史供结局与身价计算读取。
         this.honors = [];
@@ -231,6 +234,7 @@ class Player {
         this.yr_titles = 0;
         this.yr_mvps = [];
         this.ev_stats = {};
+        this.yr_reports = {};
     }
 
     // 单人一站的统计快照；赛事总结与年度奖项读它，缺站时返回空对象。
@@ -249,13 +253,18 @@ class Player {
 class Team {
     constructor(source) {
         this.name = source.name;
-        // 实时名次：初始为快照名次，之后每个赛季结束时按赛季积分重排。所有对外展示、
-        // 分档、权重都与这个名次挂钩，它才是「实时队伍排名」。
+        // 名次：初始为快照名次，之后每个赛季结束时按赛季积分重排。对外展示、分档、联赛、
+        // Top20 权重与潜力基数都与它挂钩，赛季中途冻结不变。名额不读它——名额读逐站的引用期名次。
         this.rank = source.rank;
+        // 实时排名：按当前赛季积分排出的位次，每场结算后由 World 重排。积分结算读的就是它，
+        // 与赛季内冻结的 rank 是两回事。
+        this.live_rank = source.rank;
+        // 引用期名次：本站名额所依据的名次（开赛日前 4 周那一刻的实时排名），每站开赛前由
+        // World 刷新。名额筛选、补位与赛事内种子都读它，见 rank_of()。
+        this.entry_rank = source.rank;
+        this.world = null;
         this.rating = START_RATING;
         this.rating_before = START_RATING;
-        this.seed_rating = START_RATING;
-        this.delta_sum = 0;
         this.matches = 0;
         this.wins = 0;
         this.losses = 0;
@@ -264,6 +273,9 @@ class Team {
         this.roster = [];
         this.tour_wins = 0;
         this.tour_losses = 0;
+        // 磨合度：0～300，100 是「刚组建」的中性基准，只对玩家所在队伍累积（见 chem_multiplier）。
+        // 跨赛季保留，只有人员进出与教练更换会把它打下来。
+        this.chemistry = CHEM_START;
         this._strength = undefined;
         this.dirty = true;
     }
@@ -281,36 +293,32 @@ class Team {
         this.potential_base = tier.base + 4 * (band.max_rank - this.rank + 1) / (span + 1);
     }
 
-    // 新赛季积分清零，回到统一起跑线；种子分由上一季末的名次给出，名次与档位保持不变。
-    // ref_rank 在开季时冻结：全年所有名额、分档与地区赛分组都以它为准（即赛历里的「引用期」）。
-    reset_season(seed) {
-        this.delta_sum = 0;
-        this.seed_rating = seed;
+    // 新赛季积分清零，回到统一起跑线；实时排名与引用期名次都重置为上一季末的名次。
+    // 赛季刚开打时还没有任何本赛季快照，因此各站的引用期都会回溯到这个起点。
+    reset_season() {
         this.rating = START_RATING;
         this.rating_before = START_RATING;
         this.matches = 0;
         this.wins = 0;
         this.losses = 0;
         this.ref_rank = this.rank;
+        this.live_rank = this.rank;
+        this.entry_rank = this.rank;
     }
 
-    // 记一场比赛的结果并结算双方积分。双方增减绝对值之和恒为零，全场总积分守恒。
-    // 期望胜率按赛季初的名次种子分算，因此爆冷（低名次赢高名次）拿到的分数远多于横扫。
-    // 积分被限制在 [MIN_RATING, MAX_RATING]：接近边界时把本场变化按「双方都不越界」的最大幅度
-    // 先截断再结算。双方共用同一个 delta、方向相反，各自独立截断会凭空产生或销毁积分。
+    // 记一场系列赛的结果并按双方的实时排名结算积分。双方各自独立结算，合计不再为零：
+    // 以强胜弱拿得极少（排名差拉满时趋近 0），以弱胜强拿得最多；输球方向同理，
+    // 输给越弱的对手扣得越多，输给强队几乎不扣。积分各自截断在 [MIN_RATING, MAX_RATING]。
+    // world 是正常模拟路径下的回指；手工构造的单队（测试用）没有 world，退回冻结的赛季初名次。
     play_match(opponent, win) {
-        const raw = match_delta(this.seed_rating, opponent.seed_rating, win);
-        const low = MIN_RATING - START_RATING;    // delta_sum 下限
-        const high = MAX_RATING - START_RATING;   // delta_sum 上限
-        const lo = Math.max(low - this.delta_sum, opponent.delta_sum - high);
-        const hi = Math.min(high - this.delta_sum, opponent.delta_sum - low);
-        const delta = lo > hi ? 0 : clamp(raw, lo, hi);
-        this.delta_sum += delta;
-        opponent.delta_sum -= delta;
+        const world = this.world;
+        const rank_self = world ? world.live_rank_of(this) : this.rank;
+        const rank_opp = world ? world.live_rank_of(opponent) : opponent.rank;
+        this.rating = clamp(this.rating + match_delta(rank_self, rank_opp, win), MIN_RATING, MAX_RATING);
+        opponent.rating = clamp(opponent.rating + match_delta(rank_opp, rank_self, !win), MIN_RATING, MAX_RATING);
         this.matches += 1;
         opponent.matches += 1;
-        this.rating = clamp(START_RATING + this.delta_sum, MIN_RATING, MAX_RATING);
-        opponent.rating = clamp(START_RATING + opponent.delta_sum, MIN_RATING, MAX_RATING);
+        if (world) world.invalidate_live_ranks();
         if (win) {
             this.wins += 1;
             opponent.losses += 1;
@@ -347,6 +355,7 @@ class World {
         this.reserve_ids = [];
         for (const source of VRS_TEAMS) {
             const team = new Team(source);
+            team.world = this;
             this.teams.push(team);
             const profiles = PLAYER_DB[team.name];
             if (!profiles || profiles.length !== source.roster.length) {
@@ -360,6 +369,9 @@ class World {
             }
         }
         this.season = 0;
+        this._rank_stale = true;
+        this.season_open_order = this.teams.slice().sort((a, b) => a.rank - b.rank);
+        this.rank_log = [];
     }
 
     // 从固定数据库装载一名开局选手：位置、年龄与十四维属性全部来自 PLAYER_DB，不消耗随机数，
@@ -375,14 +387,64 @@ class World {
         return player;
     }
 
-    // 新赛季积分清零到 1000，并按上一季末的名次重新计算种子分；档位与权重保持不变。
-    reset_season(field_size = this.teams.length) {
-        for (const team of this.teams) team.reset_season(seed_rating(team.rank, field_size));
+    // 新赛季积分清零到 1000，实时排名重置为上一季末的名次；档位与权重保持不变。
+    reset_season() {
+        for (const team of this.teams) team.reset_season();
+        this.invalidate_live_ranks();
+        // 引用期回溯的起点：赛季初名次就是上一季末排出来的名次。
+        this.season_open_order = this.teams.slice().sort((a, b) => a.rank - b.rank);
+        this.rank_log = [];
     }
 
     // 实时排名：按当前赛季积分从高到低排序，同分时用上一季末的名次打破平局。
     standings() {
         return this.teams.slice().sort((a, b) => b.rating - a.rating || a.rank - b.rank);
+    }
+
+    // 一队的实时排名（1..100）。每场结算都会让积分变动，因此读之前按需重排一次：
+    // 一场比赛只影响两队，但要确定它们在全体中的位次仍得整表排序，100 队的排序比每场各自扫一遍便宜。
+    live_rank_of(team) {
+        if (this._rank_stale) {
+            this.standings().forEach((t, i) => { t.live_rank = i + 1; });
+            this._rank_stale = false;
+        }
+        return team.live_rank;
+    }
+
+    invalidate_live_ranks() {
+        this._rank_stale = true;
+    }
+
+    // 赛季内的名次快照：逐日循环在当天赛事结算完后调用一次。名次没变就不重复记，
+    // 因此一条记录代表「从这一天起名次变成这样」，供后面的站点回溯引用期。
+    snapshot_ranks(day) {
+        const order = this.standings();
+        const last = this.rank_log[this.rank_log.length - 1];
+        if (last && last.order.every((team, i) => team === order[i])) return;
+        this.rank_log.push({day, order});
+    }
+
+    // 引用期（日期）对应的名次表：取 day ≤ 该日期的最后一条快照。首站的引用期落在上一年，
+    // 那时还没有任何本赛季的快照，于是退回赛季初名次——即上一季末排出的名次。
+    entry_order(day) {
+        let order = this.season_open_order;
+        for (const snap of this.rank_log) {
+            if (snap.day > day) break;
+            order = snap.order;
+        }
+        return order;
+    }
+
+    // 把某站引用期的名次写进每支队伍的 entry_rank。此后 rank_of() 读到的就是「该站的身份」，
+    // 名单筛选、补位、赛事内种子与同分排序全部与参赛名单同一口径。
+    apply_entry_ranks(event) {
+        this.entry_order(reference_day(event.start_day))
+            .forEach((team, i) => { team.entry_rank = i + 1; });
+    }
+
+    // 查询某队在某个引用期的名次，不改动队伍当前的 entry_rank（用于「下一场比赛」这类前瞻）。
+    entry_rank_at(team, event) {
+        return this.entry_order(reference_day(event.start_day)).indexOf(team) + 1;
     }
 
     // 赛季结束：按最终积分排出新名次，并刷新档位、联赛、权重与潜力基数。
@@ -436,17 +498,20 @@ class World {
         for (const player of this.players) player.age += 1;
         for (const team of this.teams) {
             const vacancies = [];   // 本队离队者的位置，供补位新人继承
+            let changed = false;    // 本队本季是否换过人：一个休赛期只扣一次磨合度
             team.roster = team.roster.filter(player => {
                 if (player.is_human) return true;
                 if (player.age >= NPC_MAX_AGE || rng.random() < npc_retire_chance(player.age)) {
                     player.retired = true;
                     this.reserve_ids.push(player.id);
                     vacancies.push(player.role);
+                    changed = true;
                     return false;
                 }
                 return true;
             });
             while (team.roster.length < 5) this.gen_npc(team, vacancies.shift() || null);
+            if (changed) note_roster_change(team);
         }
         this.players = this.players.filter(player => !player.retired);
         this.simulate_transfers(rng);
@@ -476,11 +541,17 @@ class World {
                 other.dirty = true;
                 a.team = other;
                 b.team = team;
+                note_roster_change(team);
+                note_roster_change(other);
             }
         }
         if (rng.random() < 0.35) {
             const [a, b] = rng.sample(this.teams, 2);
-            if (Math.abs(a.tier - b.tier) <= 1) [a.coach, b.coach] = [b.coach, a.coach];
+            if (Math.abs(a.tier - b.tier) <= 1) {
+                [a.coach, b.coach] = [b.coach, a.coach];
+                note_coach_change(a);
+                note_coach_change(b);
+            }
         }
     }
 
@@ -499,9 +570,15 @@ class World {
         hi.dirty = true;
         star.team = hi;
         weak.team = lo;
+        note_roster_change(lo);
+        note_roster_change(hi);
         if (rng.random() < 0.35) {
             const [a, b] = rng.sample(this.teams, 2);
-            if (Math.abs(a.tier - b.tier) <= 1) [a.coach, b.coach] = [b.coach, a.coach];
+            if (Math.abs(a.tier - b.tier) <= 1) {
+                [a.coach, b.coach] = [b.coach, a.coach];
+                note_coach_change(a);
+                note_coach_change(b);
+            }
         }
     }
 
@@ -578,31 +655,87 @@ function swiss_series_cap(event, entry_a, entry_b) {
     return decisive(entry_a) || decisive(entry_b) ? series_cap(false, event) : 1;
 }
 
-// 单图表现系数：个人实力相对本队平均的差距 + 临场随机，再乘角色状态的修正。
-// 1 是「打出身价」的基准线，越强的个人与越弱的队友系数越高；用逻辑函数压住两端。
-function player_form(player, team, event, rng) {
-    const edge = (player.overall() - team.strength()) / 15;
-    const form = (0.95 * 2 / (1 + Math.exp(-edge)) + rng.gauss(0, 0.16)) * form_multiplier(player);
-    return clamp(form, 0.42, 1.95);
+// 位置不同，吃的属性也不同，所以**不能拿总评当「打得好不好」的代理**：指挥的总评里
+// 信息(0.15)+沟通(0.14) 占了近三成，一个枪法平平的指挥总评也能很高。这里把「一个人能打出
+// 什么数据」拆成两个复合项，各自只吃真正相关的属性：
+//   枪法   —— 直接决定对枪结果的机械属性，决定击杀与 ADR。
+//   团队性 —— 道具、补枪、信息与沟通，决定助攻与存活（KAST）。
+const FRAG_WEIGHTS = {preaim: 0.26, reaction: 0.22, spray: 0.18, positioning: 0.14, entry: 0.10, movement: 0.10};
+const SUPPORT_WEIGHTS = {utility: 0.30, trade: 0.26, info: 0.24, comms: 0.20};
+// 表现系数的基准取「本队与对手两队平均水平的中点」，而不是一条全联盟固定水线：
+// 数据是**相对对手**打出来的，同样一名选手打弱队数据好、打强队数据差。用中点作基准，
+// 势均力敌时两队都落在 0.95 上下——**无论哪个级别的联赛数据都正常**（扩展联赛的两支弱队
+// 互打也是十来杀，不会因为「离世界第一很远」而全场只有三杀）；强弱悬殊时差值被中点平分，
+// 强队上浮、弱队下沉，不会一边刷爆一边归零。
+// STAT_SPREAD 按实测的队内水平差标定（队内枪法复合项标准差约 7），差 15 分表现系数约翻倍。
+const STAT_SPREAD = 15;
+
+// 位置对各项数据的倾向（乘在枪法 / 团队性算出的基准之上）。以步枪手为 1.00：
+// 狙击手输出与存活最好；突破手先手对枪多、阵亡也最多；辅助击杀最少、助攻最多、存活最稳；
+// 指挥的输出低于平均，靠道具与沟通吃助攻；自由人打得少而稳。
+// 幅度刻意收在 ±10% 左右：位置差还要叠上「个人枪法比场上平均强多少」这一层，两层是相乘的，
+// 系数给足（±18%）会把辅助的每回合击杀压到 0.42，而职业比赛里各位置的 KPR 只差 ±10%。
+const ROLE_STAT_PROFILE = {
+    "狙击手": {kills: 1.07, deaths: 0.93, assists: 0.85, adr: 1.07, kast: 1.02},
+    "突破手": {kills: 1.03, deaths: 1.08, assists: 0.95, adr: 1.01, kast: 0.97},
+    "步枪手": {kills: 1.00, deaths: 1.00, assists: 1.00, adr: 1.00, kast: 1.00},
+    "指挥":   {kills: 0.95, deaths: 1.00, assists: 1.09, adr: 0.97, kast: 1.01},
+    "辅助":   {kills: 0.91, deaths: 0.96, assists: 1.17, adr: 0.93, kast: 1.04},
+    "自由人": {kills: 0.99, deaths: 0.95, assists: 0.99, adr: 1.00, kast: 1.02},
+};
+
+function composite_of(player, weights) {
+    let total = 0;
+    for (const key in weights) total += weights[key] * player[key];
+    return total;
 }
 
-// 单图个人数据：Rating 由预瞄/压枪、定位与心态决定（不做团队修正，团队成绩在赛后体现），
-// 击杀、伤害、KAST 与阵亡都从同一个表现系数派生，因此各列之间不会互相矛盾。
-// 一图 15 杀、阵亡 15 次、ADR 78 是基准线；胜负只在单图给出小幅加成/扣减。
-function map_stat(player, team, event, rng, on_win) {
+// 一支队伍（上场五人）在某个复合项上的平均水平。
+function team_trait(team, weights) {
+    const lineup = lineup_of(team);
+    return lineup.reduce((sum, player) => sum + composite_of(player, weights), 0) / lineup.length;
+}
+
+// 一个复合项对应的表现系数：选手的水平相对「本队与对手的中点」的差距。1 是「打出身价」的基准线。
+function field_form(player, team, opponent, weights) {
+    const base = (team_trait(team, weights) + team_trait(opponent, weights)) / 2;
+    return 0.95 * 2 / (1 + Math.exp(-(composite_of(player, weights) - base) / STAT_SPREAD));
+}
+
+// Rating 的系数用 HLTV Rating 2.0 的口径（KAST / KPR / DPR / Impact / ADR 的线性组合），
+// 截距 RATING_BASE 把「平均水平选手在势均力敌的一图里」校准到 1.00 附近。
+const RATING_BASE = 0.05;
+
+// 单图个人数据：枪法与团队性两个复合项分别驱动对应的列，再乘位置倾向。
+// 计数类（击杀 / 阵亡 / 助攻）按这张图**实际打了多少回合**折算，速率类（ADR / KAST / Rating）
+// 本身就是每回合的量、与回合数无关——于是 13-2 这种速胜图数据自然偏小，16-14 这种加时图偏大。
+// 每回合基准：击杀 0.70、助攻 0.22，ADR 78、KAST 71%。
+// Rating 由上面几项**反算**（而不是另起一套公式），所以「数据好」与「Rating 高」不会各说各话；
+// 临场手感带来的偏差会自然传导过去，一图刷出 1.5 以上是可能的。
+function map_stat(player, team, opponent, event, rng, on_win, rounds) {
     const cfg = GRADE_CFG[event.grade];
-    const form = player_form(player, team, event, rng);
+    const prof = ROLE_STAT_PROFILE[player.role];
+    // 状态与磨合度都是乘在表现系数上的整体修正：后者是队级的，队内五人同进同退。
+    const state = form_multiplier(player) * chem_multiplier(team);
+    const frag = clamp(field_form(player, team, opponent, FRAG_WEIGHTS) * state, 0.15, 1.95);
+    const supp = clamp(field_form(player, team, opponent, SUPPORT_WEIGHTS) * state, 0.15, 1.95);
     const mental = (player.composure + player.focus) / 2;
-    const aim_skill = player.preaim * 0.62 + player.spray * 0.38;
-    const support = player.utility * 0.60 + player.trade * 0.40;
-    const rating = clamp(0.95 + (form - 1) * 0.90 + (mental - 50) / 500
-        + rng.gauss(0, 0.10) * cfg.form + (on_win ? 0.09 : -0.07), 0.20, 2.20);
-    const adr = clamp(rng.gauss(78 * (0.48 + 0.52 * form) + (aim_skill - 50) * 0.22, 8), 15, 165);
-    const kast = clamp(rng.gauss(71 + (support - 50) * 0.10 + (form - 1) * 14, 5), 30, 96);
-    const kills = clamp(Math.round(rng.gauss(14.2 * form ** 0.72, 3.2)), 1, 46);
-    const deaths = clamp(Math.round(kills / clamp(rng.gauss(1 + (form - 1) * 0.55, 0.16), 0.40, 2.30)), 3, 42);
-    const assists = clamp(Math.round(rng.gauss(4.6 + (support - 50) * 0.05 + (player.comms - 50) * 0.03 + (form - 1) * 2.4, 2.4)), 0, 18);
+
+    const kills = clamp(Math.round(rng.gauss(rounds * 0.70 * prof.kills * frag ** 0.72, 3.2)), 1, 46);
+    const kd = clamp(rng.gauss(1 + (frag - 1) * 0.55, 0.16), 0.40, 2.30);
+    const deaths = clamp(Math.round(kills * prof.deaths / kd), 3, 42);
+    const assists = clamp(Math.round(rng.gauss(rounds * 0.22 * prof.assists * supp ** 0.80, 2.2)), 0, 18);
+    const adr = clamp(rng.gauss(78 * (0.48 + 0.52 * frag) * prof.adr, 8), 15, 165);
+    const kast = clamp(rng.gauss(71 + (supp - 1) * 12 + (frag - 1) * 4, 5) * prof.kast, 30, 96);
     const headshots = clamp(Math.round(kills * clamp(rng.gauss(0.46 + (player.preaim - 50) * 0.002, 0.08), 0.15, 0.85)), 0, kills);
+
+    const kpr = kills / rounds;
+    const dpr = deaths / rounds;
+    const apr = assists / rounds;
+    const impact = 2.13 * kpr + 0.42 * apr - 0.41;
+    const rating = clamp(0.0073 * kast + 0.3591 * kpr - 0.5329 * dpr + 0.2372 * impact
+        + 0.0032 * adr + RATING_BASE + (mental - 50) / 500
+        + rng.gauss(0, 0.04) * cfg.form + (on_win ? 0.06 : -0.05), 0.20, 2.20);
     return {rating, kills, deaths, assists, adr, kast, headshots};
 }
 
@@ -619,6 +752,35 @@ function lineup_of(team) {
     return lineup;
 }
 
+// 单图比分：MR12 —— 常规时间先到 13 胜（一图最多 24 回合），12-12 进 MR3 加时
+// （每半场 3 回合、先到 4 分；3-3 就再来一个加时，直到分胜负）。
+// 系列赛的胜负已经定了，这里只按「本图胜方」的视角补一个自洽的比分：
+// 胜方赛前胜率越高、分差越大；爆冷（胜方赛前是劣势方）一律按胶着处理。
+// 返回胜方 / 负方的回合数与加时个数，负方回合数在常规时间内落在 0～12。
+const OT_LOSER_ROUNDS = [2, 2, 2, 2, 2, 1, 1, 0, 3];   // 一个加时里负方的得分；3 分即 3-3
+function map_round_score(rng, chance) {
+    const dominance = Math.max(0, (chance - 0.5) * 2);          // 势均力敌 0，一边倒 1
+    const loser = clamp(Math.round(rng.gauss(9.4 - dominance * 6.4, 2.2)), 0, 12);
+    if (loser < 12) return {won: 13, lost: loser, overtimes: 0};
+    // 12-12：打加时。每段加时双方各 3 回合，先到 4 分者拿下这一图。
+    let won = 12;
+    let lost = 12;
+    let overtimes = 0;
+    for (;;) {
+        const points = OT_LOSER_ROUNDS[rng.randint(0, OT_LOSER_ROUNDS.length - 1)];
+        overtimes += 1;
+        if (points === 3) {                                     // 3-3：再来一个加时
+            won += 3;
+            lost += 3;
+            continue;
+        }
+        won += 4;
+        lost += points;
+        break;
+    }
+    return {won, lost, overtimes};
+}
+
 // 一场系列赛：逐图模拟，每张图给双方五名选手各记一条数据，返回胜负与比分。
 // maps 是这场系列赛的图数上限（Bo3 = 最多 3 图）：先拿够过半胜场者胜，打满即止。
 // buff 是本队这一站的临场状态加成（玩家事件产生），只影响胜负，不影响个人数据口径。
@@ -626,28 +788,42 @@ function lineup_of(team) {
 // 与顶级联赛需要完整个体数据，扩展联赛的批量模拟则省下这部分开销。
 // sink 为数组时逐图留存双方明细（只用于玩家参赛的场次），世界模拟传 null，不产生额外对象。
 function simulate_series(a, b, event, rng, buff, maps, detailed, sink = null) {
-    const strength = team => team.strength() + team_form_bonus(team) + (buff.get(team) || 0);
+    const strength = team => team.strength() * chem_multiplier(team) + team_form_bonus(team) + (buff.get(team) || 0);
     // 胜场门槛＝过半图数：Bo3 需 2 胜、Bo5 需 3 胜（maps 只是上限，不是门槛）。
     const need = Math.floor(maps / 2) + 1;
     let a_wins = 0;
     let b_wins = 0;
     while (a_wins < need && b_wins < need && a_wins + b_wins < maps) {
-        const a_takes = rng.random() < win_chance(strength(a), strength(b));
+        const chance = win_chance(strength(a), strength(b));
+        const a_takes = rng.random() < chance;
         const winner = a_takes ? a : b;
         if (a_takes) a_wins += 1;
         else b_wins += 1;
         if (!detailed) continue;
+        // 单图比分先算：它决定这张图打了多少回合，而计数类个人数据要按回合数折算。
+        // 比分只在玩家参赛的场次留存（世界模拟传 sink = null），但回合数每张图都得知道。
+        const score = map_round_score(rng, a_takes ? chance : 1 - chance);
+        const rounds = score.won + score.lost;
         // sink 只在玩家参赛的场次传入：逐图把双方五人的明细留一份，供赛事总结的「详细数据」页使用。
         const lines = sink ? [] : null;
         // 统计按阵容记账：每张图每边恰好五条记录，玩家的位置由阵容补位规则决定。
         for (const team of [a, b]) {
             for (const player of lineup_of(team)) {
-                const line = map_stat(player, team, event, rng, team === winner);
+                const line = map_stat(player, team, team === a ? b : a, event, rng, team === winner, rounds);
                 push_event_stats(player, event, line, false);
                 if (lines) lines.push({team, player, line, won: team === winner});
             }
         }
-        if (lines) sink.push({winner, lines});
+        if (lines) {
+            // 按胜方 / 负方分别记，调用方不必知道这一场谁是 a 谁是 b。
+            sink.push({
+                winner,
+                lines,
+                winner_rounds: score.won,
+                loser_rounds: score.lost,
+                overtimes: score.overtimes,
+            });
+        }
     }
     // 门槛＝过半图数，而上限又是奇数（Bo3 = 3、Bo5 = 5），因此必然有一方先到门槛：平局不可能出现。
     // 一旦出现就说明有人又把「预定图数」塞进了 maps，直接炸掉而不是悄悄把胜利判给 b。
@@ -656,6 +832,8 @@ function simulate_series(a, b, event, rng, buff, maps, detailed, sink = null) {
     }
     for (const team of [a, b]) {
         const win = team === a ? a_wins > b_wins : b_wins > a_wins;
+        // 磨合度按「一场系列赛」结算：练习赛与正式赛走的是同一条路，因此两者都算数。
+        note_series_result(team, win);
         if (detailed) {
             for (const player of lineup_of(team)) credit_series(player.ev_stats[event.key], win);
         } else {
@@ -714,6 +892,9 @@ function credit_series(st, won) {
 function play_series(a, b, event, rng, buff, maps, detailed, stage = null) {
     const host = a.event_log ? a : (b.event_log ? b : null);
     const sink = host && stage ? [] : null;
+    // 本场积分变化的基准。这里对本场变化本身取整（而不是拿两个取整后的积分相减）：
+    // 单场变化最小也有约 1 分的量级，直接取整不会把负数抹成 0，而「输球却显示 0」会让玩家以为没结算。
+    const rating_before = host ? host.rating : 0;
     const match = simulate_series(a, b, event, rng, buff, maps, detailed, sink);
     const a_won = match.winner === a;
     a.play_match(b, a_won);
@@ -727,6 +908,7 @@ function play_series(a, b, event, rng, buff, maps, detailed, stage = null) {
             won: match.winner === host,
             score: host === a ? [match.a_wins, match.b_wins] : [match.b_wins, match.a_wins],
             stage,
+            elo: Math.round(host.rating - rating_before),
             maps: sink,
         });
     }
@@ -1122,6 +1304,8 @@ function honor_points(honors) {
 // 先按引用期名次排出参赛名单，再交给 run_tournament 逐场模拟。
 // plays 是赛程已经算好的「玩家是否参赛」，不传则按引用期名次现算。
 function run_event(world, event, rng, human, buff, plays = null) {
+    // 引用期名次要先落地：下面的默认参赛判定与名单组装都得用同一套名次。
+    world.apply_entry_ranks(event);
     const human_plays = plays === null
         ? Boolean(human && team_invited(human.team, event))
         : Boolean(human && plays);
@@ -1196,10 +1380,14 @@ function event_leaders(summary) {
     const by_kills = stats.slice().sort((a, b) => b.kills - a.kills || b.rating - a.rating);
     return {stats, by_rating, by_kills};
 }
-// 单站个人 Rating 的解析式。正常流程下赛事结算用逐图数据的平均值，这个函数保留给
-// 开发检查与异常兜底：由总评、心态、临场随机与团队成绩共同决定。
+// 单站个人 Rating 的解析式。正常流程下赛事结算用逐图数据的平均值，这个函数给没打过图的
+// 替补兜底（`finalize_event` 在 `st.maps` 为 0 时才走到这里），以及扩展联赛的整场结算。
+// 与 map_stat 同源：一样走枪法复合项，斜率 0.50 是按 Rating 2.0 口径对枪法求导得到的，
+// 因此「只会算一遍 Rating」的两条通路量级一致。这里没有对手，按「对手 = 本队」处理。
 function individual_rating(player, result, event, rng) {
-    let base = 0.55 + player.overall() / 100 * 0.85 + rng.uniform(-0.12, 0.12) + (player.mental - 50) / 400;
+    const mental = (player.composure + player.focus) / 2;
+    const frag = field_form(player, player.team, player.team, FRAG_WEIGHTS) * chem_multiplier(player.team);
+    let base = 1.00 + (frag - 0.95) * 0.50 + (mental - 50) / 500 + rng.uniform(-0.12, 0.12);
     base += RESULT_BONUS[result] || 0;
     if (event.is_major) base -= 0.03;
     return clamp(base, 0.35, 1.80);
@@ -1265,6 +1453,25 @@ function detail_row(item, human) {
     };
 }
 
+// 逐图明细：把 simulate_series 采集的 sink 转成战报用的纯数据（每图双方各五行，单图比分以我方在前）。
+// 赛事总结与练习赛战报共用同一套口径，保证「详细数据」页两处长得一样。
+function series_map_details(sink, human, opponent) {
+    return sink.map(record => {
+        const own = record.winner === human.team;
+        // 单图比分（MR12，12-12 进加时）：统一以我方在前，方便战报直接显示。
+        const score = own
+            ? [record.winner_rounds, record.loser_rounds]
+            : [record.loser_rounds, record.winner_rounds];
+        return {
+            won: own,
+            score,
+            overtimes: record.overtimes,
+            mine: record.lines.filter(item => item.team === human.team).map(item => detail_row(item, human)),
+            theirs: record.lines.filter(item => item.team === opponent).map(item => detail_row(item, human)),
+        };
+    });
+}
+
 // 把本站的选手统计与逐场明细整理成纯数据，交给渲染层（不接触 DOM）。
 // 返回 null 表示本站没有玩家的统计（异常兜底：调用方直接跳过窗口与摘要）。
 function event_summary_payload(summary, human) {
@@ -1295,13 +1502,13 @@ function event_summary_payload(summary, human) {
             opponent: record.opponent.name,
             won: record.won,
             score: record.score,
-            maps: record.maps.map(sink => ({
-                won: sink.winner === human.team,
-                mine: sink.lines.filter(item => item.team === human.team).map(item => detail_row(item, human)),
-                theirs: sink.lines.filter(item => item.team === record.opponent).map(item => detail_row(item, human)),
-            })),
+            elo: record.elo,
+            maps: series_map_details(record.maps, human, record.opponent),
         };
     });
+    // 本站积分变化：逐场求和。每场都按取整值结算，因此这个和恰好等于「站末积分 − 站前积分」，
+    // 战报里逐场数字与顶部合计不会差 1 分。
+    const elo_total = matches.reduce((sum, item) => sum + item.elo, 0);
 
     return {
         event: {
@@ -1333,6 +1540,9 @@ function event_summary_payload(summary, human) {
             rating: own.rating,
             kast: own.kast,
             adr: own.adr,
+            season_after: human.team.shown_rating,
+            season_before: human.team.shown_rating - elo_total,
+            elo_total,
         },
         rating_board: board(by_rating, entry => ({rating: entry.rating})),
         kill_board: board(by_kills, entry => ({kills: entry.kills})),
@@ -1348,8 +1558,9 @@ function emit_log(io, entry) {
 
 // 玩家参赛赛事的赛后总结：弹出二级窗口，日志里只留一条与其他逐日条目同样式的摘要。
 // 其他运行环境（如 check.cjs 的静默 io）没有 io.summary，自动跳过窗口。
-async function event_summary(summary, human, io, rating_before, date) {
-    const payload = event_summary_payload(summary, human);
+// payload 可由调用方预先算好传入（结算时要先存一份留给赛程滑块，避免重复生成）。
+async function event_summary(summary, human, io, rating_before, date, payload) {
+    if (payload === undefined) payload = event_summary_payload(summary, human);
     if (payload && io.summary) await io.summary(payload);
 
     const {event, teams, standings} = summary;
@@ -1514,14 +1725,14 @@ function status_snapshot(human, context = null) {
             me: player === human,
         })),
         coach: team.coach,
-        // 下一场比赛：只有逐日循环在暂停点带上 context 时才有值。
-        next: context && context.next ? {
-            name: context.next.event.name,
-            tier: grade_label(context.next.event.grade),
-            from: date_short(game_date(START_YEAR + human.year - 1, context.next.event.start_day)),
-            to: date_short(game_date(START_YEAR + human.year - 1, context.next.event.end_day)),
-            days: context.next.event.start_day - context.day,
-        } : null,
+        // 磨合度与它对队伍实力的修正（0.10 表示 +10%），显示在「队伍成员」卡片标题行。
+        chemistry: Math.round(team.chemistry),
+        chem_bonus: chem_multiplier(team) - 1,
+        // 今年赛程（右栏滑块）：已打完的站在前、未开赛的站在后，只有逐日循环带上 context.day
+        // 时才有值。带上 day 就一定有数据，因此面板刷新不会再出现「本赛季已无比赛」的假空态。
+        schedule: context && typeof context.day === "number" && world
+            ? schedule_snapshot(human, context.day)
+            : [],
         season: {
             points: team.shown_rating,
             rank: world ? live_rank_of(world, team) : team.rank,
@@ -1566,6 +1777,11 @@ function move_to_team(world, p, new_team, rng) {
     old_team.dirty = true;
     new_team.dirty = true;
     p.team = new_team;
+    // 换队等于重建阵容：旧队回到中性基准，新队从「刚组建」再扣一次人员变动的磨合度。
+    if (p.is_human) {
+        old_team.chemistry = CHEM_START;
+        new_team.chemistry = CHEM_START + CHEM_ROSTER_CHANGE;
+    }
     return `${old_team.name} -> ${new_team.name} (${TIERS[new_team.tier].name})`;
 }
 
@@ -1574,7 +1790,15 @@ function move_to_team(world, p, new_team, rng) {
 function change_tier(p, delta, rng) {
     const tier = clamp(p.team.tier + delta, 0, TIERS.length - 1);
     if (tier === p.team.tier) return null;
-    const candidates = p.world.teams.filter(t => t.tier === tier && t.league === p.league && t !== p.team);
+    const candidates = p.world.teams.filter(t => t.tier === tier && t.league === p.team.league && t !== p.team);
+    return candidates.length ? move_to_team(p.world, p, rng.choice(candidates), rng) : null;
+}
+
+// 转会邀约：候选队伍来自「相同或更高一档」，不越档也不降档，且同联赛内必有同档队伍，
+// 因此玩家一旦接受就必定完成转会。联赛取 p.team.league（Player 本身没有 league 字段）。
+function transfer_offer(p, rng) {
+    const tiers = [p.team.tier, p.team.tier + 1].filter(t => t < TIERS.length);
+    const candidates = p.world.teams.filter(t => t !== p.team && t.league === p.team.league && tiers.includes(t.tier));
     return candidates.length ? move_to_team(p.world, p, rng.choice(candidates), rng) : null;
 }
 
@@ -1598,6 +1822,17 @@ function apply_effects(p, fx, rng, lines) {
         const message = change_tier(p, fx.tier, rng);
         if (message) lines.push("转会: " + message);
     }
+    if (fx.transfer) {
+        const message = transfer_offer(p, rng);
+        if (message) lines.push("转会: " + message);
+    }
+    // 磨合度走的是队级数值，不乘 EVENT_SCALE 与位置系数（那是给十四维属性用的）。
+    if ("chem" in fx) {
+        const before = p.team.chemistry;
+        adjust_chemistry(p.team, rng.randint(...fx.chem));
+        const delta = round(p.team.chemistry - before);
+        if (delta) lines.push("磨合度 " + signed(delta) + "%");
+    }
     for (const [key, label] of ATTRS) {
         if (!(key in fx)) continue;
         // 位置越看重该属性，事件带来的成长越多；再乘统一的成长系数。
@@ -1615,7 +1850,12 @@ function option_hint(fx, role) {
     const hints = [];
     if ("role" in fx && fx.role !== role) hints.push({text: "转职 " + fx.role, tone: "neutral"});
     if ("tier" in fx) hints.push({text: fx.tier > 0 ? "转会升档" : "转会降档", tone: "neutral"});
+    if (fx.transfer) hints.push({text: "转会同档或升档", tone: "neutral"});
     if ("buff" in fx) hints.push({text: "临场 +" + round(fx.buff * 100) + "%", tone: "neutral"});
+    if ("chem" in fx) {
+        const up = fx.chem[1] > 0, down = fx.chem[0] < 0;
+        hints.push({text: "磨合度" + (up && down ? " ±" : up ? " ↑" : " ↓"), tone: up && down ? "both" : up ? "up" : "down"});
+    }
     if (fx.injured) hints.push({text: "伤病风险", tone: "neutral"});
     for (const [key, label] of ATTRS) {
         if (!(key in fx)) continue;
@@ -1721,38 +1961,266 @@ function team_form_bonus(team) {
     return bonus;
 }
 
+/* ==========================================================================
+ * 队伍磨合度：0～300，100 是「刚组建的阵容」的中性基准
+ * --------------------------------------------------------------------------
+ * 与状态（form）同构的一点是「只有玩家所在队伍真正参与」：NPC 队伍恒为 100，
+ * 修正系数 1.00，因此这套系统不扰动已经校准好的 NPC 世界与名次分布。
+ * 玩家队伍靠打比赛累积（练习赛与正式赛都算，赢得多涨得快），人员进出会把它打下去。
+ * ========================================================================== */
+
+const CHEM_START = 100;         // 刚组建的阵容：中性基准
+const CHEM_MAX = 300;           // 上限
+const CHEM_PER_100 = 0.05;      // 每 100 点磨合度折算 ±5% 队伍实力
+const CHEM_WIN = 2.5;           // 赢一场系列赛
+const CHEM_LOSS = 0.5;          // 输一场也有一点（赢球才磨得出来，输球几乎是白打）
+const CHEM_ROSTER_CHANGE = -15; // 队内有人进出一次
+const CHEM_COACH_CHANGE = -10;  // 教练更换一次
+const CHEM_SOFT_FROM = 150;     // 超过这个值后增益线性衰减，300 时归零
+
+// 磨合度对队伍实力（胜负）与队内每名选手表现（数据）的统一系数。
+// 100 → 1.00，300 → 1.10，0 → 0.95。
+function chem_multiplier(team) {
+    return 1 + (clamp(team.chemistry, 0, CHEM_MAX) - CHEM_START) / 100 * CHEM_PER_100;
+}
+
+// 越接近上限越难再涨：150 以下全额，之后线性衰减到 300 时归零。
+// 没有这一层，一个赛季 70 场比赛就会把队伍顶到 300 并永久静止。
+function chem_gain_scale(chemistry) {
+    if (chemistry <= CHEM_SOFT_FROM) return 1;
+    return Math.max(0, (CHEM_MAX - chemistry) / (CHEM_MAX - CHEM_SOFT_FROM));
+}
+
+function adjust_chemistry(team, delta) {
+    team.chemistry = clamp(team.chemistry + delta, 0, CHEM_MAX);
+}
+
+// 只有玩家所在队伍才累积磨合度，NPC 队伍保持中性。
+function human_team(team) {
+    return team.roster.some(player => player.is_human);
+}
+
+function note_roster_change(team) {
+    if (human_team(team)) adjust_chemistry(team, CHEM_ROSTER_CHANGE);
+}
+
+function note_coach_change(team) {
+    if (human_team(team)) adjust_chemistry(team, CHEM_COACH_CHANGE);
+}
+
+// 一场系列赛结束后的磨合度结算，由 simulate_series 统一调用（练习赛走同一条路）。
+function note_series_result(team, win) {
+    if (!human_team(team)) return;
+    const base = win ? CHEM_WIN : CHEM_LOSS;
+    adjust_chemistry(team, base * chem_gain_scale(team.chemistry));
+}
+
+/* ==========================================================================
+ * 练习赛：空闲周抽一支同档位的队伍打一场 Bo3
+ * --------------------------------------------------------------------------
+ * 每周在空闲日触发一次。它**不影响赛季积分与排名**，也不进赛季数据，唯一的世界影响是
+ * 赛后按「本场个人 Rating 相对年内平均 Rating」的偏离对状态做一次微调（打得好回升、打得差下滑）。
+ * 战后只在生涯日志里留一行摘要（`play_practice_match`），不弹战报窗口。
+ * ========================================================================== */
+
+// 练习赛的级别模板：只借用 GRADE_CFG 的 Rating 波动幅度，不参与任何名额、分档或积分结算。
+const PRACTICE_GRADE = "B";
+// 状态微调的判定带：本场 Rating 比年内均值高出 / 低于这个幅度才移动一档，避免随机波动把状态抖来抖去。
+const PRACTICE_FORM_BAND = 0.10;
+
+// 对手抽取：与玩家队伍**同档位**（同一名次区间，同一联赛）的其它队伍里随机一支。
+// 档位由引用期名次推出，因此抽出来的对手实力与玩家队伍同一量级。
+function practice_opponent(world, team, rng) {
+    const pool = world.teams.filter(other => other !== team && other.tier === team.tier);
+    return pool.length ? rng.choice(pool) : null;
+}
+
+// 年内平均 Rating（练习赛的基准线）：取本赛季已出场站次的 Rating 均值；
+// 赛季初还没有记录时退回生涯平均（同样为空则返回 0，调用方据此跳过调整）。
+function year_rating_baseline(p) {
+    const yr = p.yr_ratings;
+    if (yr.length) return yr.reduce((sum, r) => sum + r, 0) / yr.length;
+    return p.career_rating() || 0;
+}
+
+// 状态微调：rating 明显高于基准升一档、明显低于基准降一档，最多移动一档（与 update_form 同规）。
+// 状态持续天数按新状态重算，稳定性的影响与常规刷新一致。返回实际移动的档数。
+function adjust_form_by_practice(p, rating, baseline) {
+    if (p.form === undefined || !rating || !baseline) return 0;
+    const diff = rating - baseline;
+    const delta = diff >= PRACTICE_FORM_BAND ? 1 : diff <= -PRACTICE_FORM_BAND ? -1 : 0;
+    if (!delta) return 0;
+    const next = clamp(p.form + delta, 0, FORM_STATES.length - 1);
+    if (next === p.form) return 0;
+    p.form = next;
+    p.form_days = form_duration(p.form, clamp((p.stability - 50) / 50, -1, 1));
+    return delta;
+}
+
+// 一周一场练习赛：结算后只在生涯日志里留一行摘要（不弹战报窗口）。
+// 逐图统计只为算本场个人 Rating 服务，跑完立刻清掉，避免污染赛季数据（地图数、击杀、均值与 Top20）。
+async function play_practice_match(human, rng, io, day, date) {
+    const opponent = practice_opponent(human.world, human.team, rng);
+    if (!opponent) return;
+    const year = START_YEAR + human.year - 1;
+    const event = {key: `practice-${year}-${day}`, name: "练习赛", grade: PRACTICE_GRADE, is_major: false};
+    const sink = [];
+    const result = simulate_series(human.team, opponent, event, rng, new Map(), 3, true, sink);
+    for (const team of [human.team, opponent]) {
+        for (const player of lineup_of(team)) delete player.ev_stats[event.key];
+    }
+    // 本场个人 Rating：逐图数据的平均（与赛事结算同一口径）。
+    let sum = 0;
+    let maps = 0;
+    for (const record of sink) {
+        for (const item of record.lines) {
+            if (item.player !== human) continue;
+            sum += item.line.rating;
+            maps += 1;
+        }
+    }
+    const rating = maps ? sum / maps : 0;
+    const move = adjust_form_by_practice(human, rating, year_rating_baseline(human));
+
+    const won = result.winner === human.team;
+    const score = `${result.a_wins}:${result.b_wins}`;
+    const arrow = move > 0 ? "↑" : move < 0 ? "↓" : "";
+    emit_log(io, {
+        date: date_md(date),
+        kind: "match",
+        lines: [
+            c("【练习赛】", YELLOW + ";" + BOLD) + c(human.team.name, CYAN) +
+                (won ? c(` 战胜 ${opponent.name}`, GREEN) : c(` 负于 ${opponent.name}`, RED)) +
+                c(`  (${score})`, DIM) +
+                `   Rating ${c(rating.toFixed(2), rating_color(rating))}` +
+                (arrow ? c(`  状态${arrow}`, move > 0 ? GREEN : RED) : ""),
+        ],
+    });
+}
+
 // 年初固定玩家赛程：全部主赛站都会出现在赛历上（没名额的站只显示日期与冠军播报），
 // 另外补上同期玩家有资格参加的地区赛。赛程只算一次，年中转会不改当季名额。
 function human_year_plan(human) {
-    const rank = rank_of(human.team);
+    const world = human.world;
+    // 资格按每站自己的引用期名次判定，而不是一套名次管全年：赛季中打出的成绩会改变后面站点的
+    // 参赛权。引用期未到的站点，取到的是「按当下名次推断」的名次，因此这张表在赛季推进中会变。
+    const invited = event => event_allows(event, world.entry_rank_at(human.team, event));
     const plan = [];
     const busy = new Set();
     // 先排主赛：同一天只可能有一站主赛，日程天然互斥。
     for (const event of ANNUAL_CALENDAR) {
         if (event.circuit !== "main") continue;
-        const plays = event_allows(event, rank);
+        const plays = invited(event);
         if (plays) busy.add(event.start_day);
         plan.push({event, plays});
     }
     // 再排地区赛：同一天已经打主赛的队伍不能再打地区赛（R5：同一天不承担两场官方赛事）。
     for (const event of ANNUAL_CALENDAR) {
         if (event.circuit !== "regional") continue;
-        if (!event_allows(event, rank) || busy.has(event.start_day)) continue;
+        if (!invited(event) || busy.has(event.start_day)) continue;
         plan.push({event, plays: true});
     }
     return plan.sort((a, b) => a.event.start_day - b.event.start_day);
+}
+
+// 今年的赛程滑块数据：玩家实际参加的站（含已打完的），按开赛日升序。
+// 已打完的站给出名次与报告入口（human.yr_reports），未开赛的站给出资格状态与依据名次。
+// 资格同样按各站引用期名次现算，因此名次一变，这张表里的「可参加」集合就会跟着变。
+function schedule_snapshot(human, day) {
+    const world = human.world;
+    const year = START_YEAR + human.year - 1;
+    const list = human_year_plan(human)
+        .filter(item => item.plays)
+        .map(item => schedule_row(human, world, year, item.event, day));
+    // 兜底：报告在手却不在当前赛程里的站（正常不该出现），也补进滑块，保证打完的站不会凭空消失。
+    const seen = new Set(list.map(item => item.key));
+    for (const key of Object.keys(human.yr_reports)) {
+        if (seen.has(key)) continue;
+        const event = ANNUAL_CALENDAR.find(item => item.key === key);
+        if (event) list.push(schedule_row(human, world, year, event, day));
+    }
+    return list.sort((a, b) => a.start_day - b.start_day);
+}
+
+// 一站的一行：已打完看报告，未开赛看资格。
+function schedule_row(human, world, year, event, day) {
+    const from = date_short(game_date(year, event.start_day));
+    const to = date_short(game_date(year, event.end_day));
+    const row = {
+        key: event.key,
+        name: event.name,
+        tier: grade_label(event.grade),
+        from, to,
+        start_day: event.start_day,
+    };
+    // 「已打完」以报告为准；报告缺失（异常兜底）时按赛期是否已过判定，宁可少给一个报告入口，
+    // 也不能把打完的站当成「未开赛」留在滑块里。
+    const report = human.yr_reports[event.key] || null;
+    if (report || event.end_day < day) {
+        return {
+            ...row, played: true,
+            place: report ? report.you.placement : "已结束",
+            rating: report ? report.you.rating : null,
+            season_delta: report ? report.you.elo_total : 0,
+            report,
+        };
+    }
+    // 资格状态：引用期（开赛日前 4 周）一过这一站才定死；在那之前显示的只是按当下名次做的推断。
+    return {
+        ...row, played: false,
+        days: event.start_day - day,
+        locked: reference_day(event.start_day) <= day,
+        ref_label: date_short(game_date(year, reference_day(event.start_day))),
+        entry_rank: world ? world.entry_rank_at(human.team, event) : human.team.rank,
+    };
+}
+
+// 尚未开赛、玩家又有资格的站，按开赛日升序（human_year_plan 已排好序）。
+function upcoming_matches(human, day) {
+    return human_year_plan(human).filter(item => item.plays && item.event.start_day > day);
+}
+
+// 「可参加赛事」集合的变化：新增（名次够上了）、失去（名次掉出去了）、锁定（引用期已过，资格定死）。
+// 只关心尚未开赛的站：已开赛的站只是从「未来」挪进「已结束」，仍留在表里，不算「失去资格」。
+function diff_schedule(prev, next) {
+    const before = new Map(prev.map(item => [item.key, item]));
+    const after = new Map(next.map(item => [item.key, item]));
+    return {
+        added: next.filter(item => !item.played && !before.has(item.key)),
+        locked: next.filter(item => !item.played && before.has(item.key)
+            && !before.get(item.key).locked && item.locked),
+        lost: prev.filter(item => !item.played && !after.has(item.key)),
+    };
+}
+
+// 赛程播报文案。名次用当前实时排名（资格推断的依据），锁定播报改用该站引用期的名次。
+function schedule_notice_lines(change, kind, rank) {
+    const when = item => `比赛日期 ${item.from} -- ${item.to}`;
+    return change.map(item => {
+        const name = c(item.name, CYAN);
+        if (kind === "added") {
+            return `根据当前排名战队排名 #${rank}，可参加 ${name}，${when(item)}，名额将在引用期 ${item.ref_label} 确定`;
+        }
+        if (kind === "lost") {
+            return `根据当前排名战队排名 #${rank}，已失去 ${name} 的参赛资格（${when(item)}）`;
+        }
+        return `你所在战队已锁定 ${name} 参赛名额（${when(item)}，引用期 ${item.ref_label} 世界 #${item.entry_rank}）`;
+    });
 }
 
 // 本站的参赛队伍：主赛先按引用期名次取直邀，再从预选区间补齐；地区赛按档位优先，
 // 档内不足 30 队时按名次从同期没有主赛名额的队伍里补足，保证每站都是完整规模。
 // 玩家所属队伍若没有名额则不参赛，赛事照常由 NPC 打完。
 function event_participants(world, event, human, human_plays) {
+    // 先把本站引用期的名次落到队伍上，名单筛选、补位与后面的种子排序才有同一个口径。
+    world.apply_entry_ranks(event);
     return build_participants(world, event, human, human_plays, null);
 }
 
 // 除玩家外的参赛队伍：与 event_participants 同一套名额逻辑，只是把玩家队伍排除在外，
 // 因此玩家没亲自打的那一站仍会由 NPC 完整模拟。
 function world_participants(world, event, exclude) {
+    world.apply_entry_ranks(event);
     return build_participants(world, event, null, false, exclude);
 }
 
@@ -1934,7 +2402,10 @@ async function settle_player_event(summary, human, io, rating_before, date) {
     // 本站 MVP：全场 Rating 最高者。玩家拿到就记一笔，年末并入生涯荣誉室。
     const {by_rating} = event_leaders(summary);
     if (by_rating.length && by_rating[0].player === human) human.yr_mvps.push(summary.event.name);
-    await event_summary(summary, human, io, rating_before, date);
+    // 报告留到年末：右栏赛程滑块上已打完的站要能重新打开。窗口与留存共用同一份 payload。
+    const payload = event_summary_payload(summary, human);
+    if (payload) human.yr_reports[summary.event.key] = payload;
+    await event_summary(summary, human, io, rating_before, date, payload);
     return result;
 }
 
@@ -1943,9 +2414,10 @@ async function settle_player_event(summary, human, io, rating_before, date) {
 async function play_human_year(human, rng, auto, io) {
     const world = human.world;
     const year = START_YEAR + human.year - 1;
+    // 赛程用于抬头展示，取的是赛季初名次下的预估（那时还没有本赛季名次快照）。
+    // 实际参赛资格在每站开赛时按引用期名次现算，因此赛季中的成绩变化会让实际打的站与这里不同。
     const plan = human_year_plan(human);
     const plays = plan.filter(item => item.plays);
-    const player_events = new Set(plays.map(item => item.event.key));
     const a_events = plays.filter(item => item.event.grade === "A").length;
     const s_events = plays.filter(item => item.event.grade === "S" || item.event.is_major).length;
 
@@ -1976,20 +2448,40 @@ async function play_human_year(human, rng, auto, io) {
         entries = [];
         seg_days = [];
     };
-    // 下一场比赛：本赛季还没打的最近一站，用于右栏的「下一场比赛」卡片。
-    const next_match = day => plays.filter(item => item.event.start_day > day)
-        .sort((a, b) => a.event.start_day - b.event.start_day)[0] || null;
+    // 下一场比赛：本赛季还没打的、自己有资格的最近一站（用于事件抽取时的级别判断）。
+    // 每站资格同样按引用期名次现算，所以赛季中打出的成绩会实时反映到这张卡片上。
+    const next_match = day => upcoming_matches(human, day)[0] || null;
+
+    // 赛程播报：把「可参加赛事」集合的变化（新增 / 失去 / 锁定）写进生涯日志。
+    // 上一次的集合存在 last_schedule 里，只在暂停点与赛事结算后对比一次，同一天的几条合并落地。
+    let last_schedule = null;
+    const broadcast_schedule = async day => {
+        const next = schedule_snapshot(human, day);
+        if (last_schedule) {
+            const rank = live_rank_of(world, human.team);
+            const change = diff_schedule(last_schedule, next);
+            for (const kind of ["added", "lost", "locked"]) {
+                for (const line of schedule_notice_lines(change[kind], kind, rank)) {
+                    push_entry(date_md(game_date(year, day)), [line], "notice");
+                }
+            }
+        }
+        last_schedule = next;
+        await flush();
+    };
 
     // 年份抬头先落地，再刷新一次面板。
     push_entry(String(year), [
         c(`${year} 年 · ${human.age} 岁`, BOLD) + "   " + c(human.team.name, CYAN) +
             c(`  [${LEAGUES[league_of(human.team.rank)].short} ${TIERS[human.tier_index].name}]`, DIM),
         `位置 ${c(human.role, MAGENTA)}   合同 ${Math.max(human.contract_left, 0)} 年   ` +
-            `引用期 世界 #${c(rank_of(human.team), YELLOW)}   本赛季 ${c(plays.length, YELLOW)} 站` +
-            ` (Major/S ${s_events} 站 · A 级 ${a_events} 站)`,
+            `赛季初 世界 #${c(rank_of(human.team), YELLOW)}   预计 ${c(plays.length, YELLOW)} 站` +
+            ` (Major/S ${s_events} 站 · A 级 ${a_events} 站) · 资格按各站赛前 4 周排名确定`,
     ], "year");
     await flush();
-    push_status(io, human);
+    // 年初的赛程作为比较基准静默记下，不把整年初始赛程当成「新增」刷屏。
+    last_schedule = schedule_snapshot(human, 0);
+    push_status(io, human, {day: 0});
 
     // 全年所有站点按开赛日归档；玩家参赛的站点分阶段模拟，其余站点静默模拟，保证世界照常结算。
     const stations_by_start = new Map();
@@ -2006,8 +2498,14 @@ async function play_human_year(human, rng, auto, io) {
         ui_day = day;
         const date = game_date(year, day);
         // —— 当天开赛的站点 —— //
+        // 同一天不承担两场官方赛事（R5）：主赛在地区赛前面，当天已经接下主赛就不再接地区赛。
+        let taken_today = false;
         for (const event of stations_by_start.get(day) || []) {
-            if (player_events.has(event.key)) {
+            // 本站资格按引用期名次现算：赛季中打出的成绩会改变后面站点的参赛权。
+            // 引用期一过这一站就定死，之后再怎么升降都不再影响它。
+            world.apply_entry_ranks(event);
+            if (!taken_today && team_invited(human.team, event)) {
+                taken_today = true;
                 active = start_player_event(world, event, human);
                 active_buff = human.buff ? new Map([[human.team, human.buff * 50]]) : new Map();
                 human.buff = 0;
@@ -2091,7 +2589,9 @@ async function play_human_year(human, rng, auto, io) {
             if (summary) {
                 await settle_player_event(summary, human, io, rating_before, date_md(date));
                 active = null;
-                push_status(io, human, {day, next: next_match(day)});
+                // 本站结算改变了实时名次，后面各站的资格推断可能跟着变：对比后播报再刷新面板。
+                await broadcast_schedule(day);
+                push_status(io, human, {day});
             }
         }
         // 阶段日与赛事进行中的日子都不再走空闲/事件分支。
@@ -2105,8 +2605,9 @@ async function play_human_year(human, rng, auto, io) {
             idle.to = day - 1;
             commit_idle();
             await flush();
-            // 第 7 天：先刷新角色状态，再触发本周末的随机事件
+            // 第 7 天：先刷新角色状态，再触发本周的练习赛与随机事件
             update_form(human, rng);
+            await play_practice_match(human, rng, io, day, date);
             const upcoming = next_match(day);
             const drawn = draw_event(human, rng, Boolean(upcoming && upcoming.event.is_major), used_ids);
             if (drawn) {
@@ -2125,10 +2626,12 @@ async function play_human_year(human, rng, auto, io) {
                     ...gains.map(line => c(line, GREEN)),
                     ...attribute_delta_lines(before, human).map(line => c(line, DIM)),
                 ], "event");
-                push_status(io, human);
             } else {
                 push_entry(date_md(date), [c("无事发生", DIM)], "idle");
             }
+            // 一周结束：本周的成绩可能改变了后面各站的资格，对比后把变化播报出来（排在事件行之后）。
+            await broadcast_schedule(day);
+            push_status(io, human, {day});
             if (!auto) {
                 const answer = await io.choose(`已模拟到 ${date_full(date)}，继续模拟吗？`, ["继续模拟"],
                     {kind: "pause", allow_retire: true});
@@ -2136,9 +2639,11 @@ async function play_human_year(human, rng, auto, io) {
                     human.retire_requested = true;
                     break;
                 }
-                push_status(io, human, {day, next: next_match(day)});
+                push_status(io, human, {day});
             }
         }
+        // 当天赛事都结算完了，记一次名次快照；后面站点的引用期会回溯到这里。
+        world.snapshot_ranks(day);
     }
 
     // 年末：把剩余的空闲段与缓冲落地。
@@ -2236,7 +2741,8 @@ function human_start_attrs(role, rng) {
 }
 
 // 玩家从世界倒数 1～10 名（第 91～100 名，扩展联赛丙级）的队伍里随机起步，替换最低总评成员；
-// 合同为 2～4 年。从最底层往上打，必须先把球队带进世界前 50 才能进入 VRS 联赛。
+// 首份合同为 1 年（新秀试训），此后续约/转会为 2～4 年。
+// 从最底层往上打，必须先把球队带进世界前 50 才能进入 VRS 联赛。
 function make_human(world, name, role, rng) {
     if (!name) name = "无名之辈";
     const team = rng.choice(world.teams.filter(t => t.rank >= 91 && t.rank <= 100));
@@ -2245,7 +2751,7 @@ function make_human(world, name, role, rng) {
     apply_attribute_floors(human);
     human.world = world;
     human.year = 0;
-    human.contract_len = rng.randint(2, 4);
+    human.contract_len = 1;
     human.contract_left = human.contract_len;
     if (team.roster.length >= 5) {
         const victim = team.roster.reduce((a, b) => a.overall() <= b.overall() ? a : b);
@@ -2257,6 +2763,8 @@ function make_human(world, name, role, rng) {
     }
     team.roster.push(human);
     team.dirty = true;
+    // 玩家入队就是一次阵容变动：从「刚组建」的基准再扣一次。
+    team.chemistry = CHEM_START + CHEM_ROSTER_CHANGE;
     world.players.push(human);
     return human;
 }

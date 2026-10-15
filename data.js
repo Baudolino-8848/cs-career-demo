@@ -150,38 +150,37 @@ function vrs_weight(rank) {
     return 0.80 - (rank - VRS_WEIGHT_COUNT) / 50 * 0.40;
 }
 
-// 赛季积分（Elo 式实时排名）。每支队伍每赛季从 START_RATING 起算，逐场比赛按对手强弱增减：
-// 低名次赢高名次拿得多，高名次赢低名次拿得极少；一场比赛双方增减之和为零，因此总积分守恒。
+// 赛季积分（累积制）。每支队伍每赛季从 START_RATING 起算，每打完一场系列赛（整场胜负，非单图）
+// 立刻结算一次，不再等到赛事结束按名次发分：
+//     赢: +WIN_K × (1 − 期望胜率)          输: −LOSS_K × 期望胜率
+// 期望胜率只由「双方的实时排名差」决定——排名差越大（以强胜弱），赢球拿得越少，差距拉满时趋近 0；
+// 以弱胜强的爆冷拿得最多。输球方向同理：输给越弱的对手扣得越多，输给强队几乎不扣。
 //
-// 期望胜率按「赛季初的名次种子分」计算，而不是按双方真实实力：
-// 如果按实力算，强队赢弱队的收益与它被爆冷的损失正好抵消，所有人的期望变化都是 0，
-// 积分只会随机游走，排不出名次。锚定名次种子后，赢下不该赢的比赛才会真正加分。
-// 种子分在每个赛季初由上一季末排出的名次决定，赛季中途不再改变。
+// 双方各自独立结算，增减之和不再为零（WIN_K > LOSS_K），因此多打一场、多赢一场都实打实地累积，
+// 不会出现「战绩符合预期就原地踏步」。积分只用于赛季末重排名次，随后归零重来。
 const START_RATING = 1000;
-const SEED_SPREAD = 3;     // 名次每差一名，种子分相差 3 分；第 1 名比第 100 名高约 297 分
-const POINT_K = 20;
-const STRENGTH_SLOPE = 33;
+const WIN_K = 55;          // 赢球基准：同排名取胜拿 WIN_K / 2 = 27.5 分；排名差拉满的爆冷接近 +54
+const LOSS_K = 45;         // 输球基准：同排名落败扣 LOSS_K / 2 = 22.5 分；排名差拉满的惨败接近 −44
+                           // 两者相差 10：这个差值就是「多打多赢必然累积」的来源。若取相等（严格对称的
+                           // ±50）则退回零和，战绩符合预期就会原地踏步，正是这套机制要避免的。
+const RANK_SLOPE = 60;     // 排名每差 RANK_SLOPE 名，胜率相差约 10 倍；差 60 名时约 9:1
+const STRENGTH_SLOPE = 33; // 实力差到比赛胜负：每差 33 点总评，胜率相差约 10 倍（只决定胜负，不参与积分）
 const MIN_RATING = 200;
 const MAX_RATING = 3000;
 // 赛季末重排名次时旧名次占的权重：0.5 表示新名次与积分排名各占一半。
 // 单赛季样本量小，积分带噪，完全按积分重排会让 100 支队伍的档位年年剧烈换血。
 const RANK_CARRY = 0.5;
 
-// 实力差到期望胜率：每差 STRENGTH_SLOPE 点，胜率相差约 10 倍。比赛胜负与积分都用它。
-function expected_score(a, b) {
-    return 1 / (1 + 10 ** ((b - a) / 400));
+// 实时排名差到期望胜率：rank_self / rank_opp 是双方的当前排名（1 最强、100 最弱）。
+// 对手排名比自己靠后（数字更大）时期望高于 0.5，对手更强时低于 0.5。
+function rank_expected(rank_self, rank_opp) {
+    return 1 / (1 + 10 ** (-(rank_opp - rank_self) / RANK_SLOPE));
 }
 
-// 名次到赛季种子分：第 1 名最高、第 100 名最低，与上赛季名次一一对应。
-function seed_rating(rank, field_size) {
-    return START_RATING + ((field_size + 1) / 2 - rank) * SEED_SPREAD;
-}
-
-// 单场比赛的积分变化：win 为 true 表示 a 取胜。双方变化的绝对值相等、方向相反。
-// K=20 时，同种子（势均力敌）的一场约 ±10 分；种子远高于对手的一方赢球只拿不到 1 分，
-// 输球却要掉接近 20 分，因此爆冷的收益远大于横扫。刻意不做取整，否则这点收益会被抹成 0。
-function match_delta(a, b, win) {
-    return POINT_K * ((win ? 1 : 0) - expected_score(a, b));
+// 单场系列赛的积分变化：win 为真表示自己取胜。双方各自调用一次（参数互换、胜负取反），合计不为零。
+function match_delta(rank_self, rank_opp, win) {
+    const expected = rank_expected(rank_self, rank_opp);
+    return win ? WIN_K * (1 - expected) : -LOSS_K * expected;
 }
 
 // 比赛胜负只由真实实力决定，与积分无关，避免积分自我强化。
@@ -242,6 +241,8 @@ function game_date(year, day) {
     const real = new Date(Date.UTC(year, 0, 1 + day - 1 + shift));
     return {
         year, day, shift, real_day: day + shift,
+        // 日序为负（引用期落在上一年年末）时真实年份会退回上一年，因此单独给一份。
+        real_year: real.getUTCFullYear(),
         month: real.getUTCMonth() + 1,
         day_of_month: real.getUTCDate(),
         weekday: (day - 1) % 7,
@@ -259,8 +260,9 @@ function date_full(date) {
 }
 
 // 「YYYY/M/D」；用于加载动画的紧凑日期。
+// 年份取真实日历年份而非传入值：引用期的日序可能为负，那时日期落在上一年年末。
 function date_short(date) {
-    return `${date.year}/${date.month}/${date.day_of_month}`;
+    return `${date.real_year}/${date.month}/${date.day_of_month}`;
 }
 
 // 「M/D」；生涯日志的日期列用，不带年份，与设计稿一致。
@@ -293,8 +295,9 @@ function rank_in_band(band, rank) {
     return band_of(rank) === band;
 }
 
-// 「引用期」= 开赛日往前 4 周（28 天）所在周的周一。名额与分档一律以赛季开始时冻结的
-// VRS 名次为准，所以赛季中途的升降不会改变当季已定的受邀名单。
+// 「引用期」= 开赛日往前 4 周（28 天）所在周的周一。每站的受邀名单、补位与赛事内种子都以
+// 那一刻的实时名次为准（见 World.apply_entry_ranks）：引用期一过这一站就定死，之后无论
+// 积分怎么升降都不再改变它；而引用期之前打出的成绩，会决定后面站点的名单。
 function reference_day(day) {
     return week_monday(week_of(day - 28));
 }
@@ -352,7 +355,7 @@ const GRASSROOTS_FINALS = [
 /* ==========================================================================
  * 年度赛历：全年 18 站 S/A/B 级主赛（零日期冲突）+ 16 站地区赛
  * --------------------------------------------------------------------------
- * 主赛名额全部来自「引用期」名次（赛季开始时冻结的排名），因此每站都是强弱混杂的
+ * 主赛名额全部来自「引用期」名次（该站开赛日前 4 周那一刻的实时排名），因此每站都是强弱混杂的
  * 16～32 队，弱队有爆冷机会；同期地区赛由 33～100 名的球队按档位参加，日期完全一致。
  * 两个赛场在同一天使用互不重叠的名单，满足「同一支队伍同一天不承担两场官方赛事」。
  * ========================================================================== */
@@ -465,8 +468,11 @@ function rank_band(rank) {
     return BANDS[band_of(rank)];
 }
 
-// 赛季内名次是浮动的，因此名额一律用赛季开始时冻结的名次判定。
+// 名额、补位与赛事内种子一律按「当前站点的引用期名次」判定——即该站开赛日前 4 周那一刻的
+// 实时排名。entry_rank 由 World 在每站开赛前写入，因此赛季中的积分变化会改变后面站点的名单，
+// 而一站锁定之后（引用期已过）就不再变动。没有站点上下文时（赛季初估算赛程）退回赛季初名次。
 function rank_of(team) {
+    if (team.entry_rank !== undefined) return team.entry_rank;
     return team.ref_rank === undefined ? team.rank : team.ref_rank;
 }
 
@@ -617,11 +623,11 @@ const EVENTS = [
 {
   "id": "transfer",
   "title": "转会邀约",
-  "desc": "一支级别更高的战队向你抛出橄榄枝, 但意味着要抛下老队友。",
-  "weight": 3,
+  "desc": "一支同档或更高一档的战队向你抛出橄榄枝, 但意味着要抛下老队友。",
+  "weight": 2,
   "options": [
-    {"text": "接受挑战, 往上走", "fx": {"tier": 1}, "result": "你跳上了更大的舞台。"},
-    {"text": "留守老东家", "fx": {"comms": [2, 3], "stability": [1, 2]}, "result": "队友们把你当成了主心骨。"}
+    {"text": "接受挑战, 往上走", "fx": {"transfer": true}, "result": "你跳上了新的舞台。"},
+    {"text": "留守老东家", "fx": {"comms": [2, 3], "stability": [1, 2], "chem": [8, 14]}, "result": "队友们把你当成了主心骨, 队伍更拧成一股绳。"}
   ],
   "cond": (p, m) => 1 <= tier_rank(p) && tier_rank(p) <= 3
 },
@@ -950,6 +956,52 @@ const EVENTS = [
   "options": [
     {"text": "练长局专注", "fx": {"focus": [3, 5], "stability": [1, 2]}, "result": "你打满三图也不会掉状态。"},
     {"text": "练赛后放松", "fx": {"focus": [1, 3], "composure": [1, 2]}, "result": "你会更快从失误里抽离。"}
+  ],
+  "cond": (p, m) => true
+},
+{
+  "id": "team_bonding",
+  "title": "团建出游",
+  "desc": "俱乐部批了一天假, 队长问全队想怎么过。",
+  "weight": 3,
+  "options": [
+    {"text": "拉全队去郊外露营", "fx": {"chem": [10, 16], "focus": [-1, 0]}, "result": "没有训练的一天, 反倒让五个人真正熟了起来。"},
+    {"text": "训练室点外卖聚餐", "fx": {"chem": [4, 7]}, "result": "吃得开心, 聊得也开心。"},
+    {"text": "算了, 各自休息", "fx": {"chem": [-3, 0]}, "result": "假期各过各的, 队伍还是那支队伍。"}
+  ],
+  "cond": (p, m) => true
+},
+{
+  "id": "tactics_review",
+  "title": "战术复盘会",
+  "desc": "教练把最近几场录像剪了出来, 要求全队一起过一遍。",
+  "weight": 3,
+  "options": [
+    {"text": "逐回合抠细节", "fx": {"chem": [7, 11], "info": [1, 2]}, "result": "五个人的想法第一次完全对上了。"},
+    {"text": "只过关键局", "fx": {"chem": [3, 5]}, "result": "效率很高, 共识多了一点。"}
+  ],
+  "cond": (p, m) => true
+},
+{
+  "id": "locker_conflict",
+  "title": "更衣室矛盾",
+  "desc": "两名队友因为一次失误在休息室里吵了起来, 气氛降到冰点。",
+  "weight": 3,
+  "options": [
+    {"text": "站出来当和事佬", "fx": {"chem": [10, 18], "focus": [-1, 0]}, "result": "你把话说开了, 队伍反而比之前更拧成一股绳。"},
+    {"text": "选边站队", "fx": {"chem": [-14, -7], "composure": [1, 2]}, "result": "你站了队, 更衣室从此分成两派。"},
+    {"text": "不掺和, 埋头训练", "fx": {"chem": [-6, -2], "preaim": [1, 2]}, "result": "队里的裂缝没人去补。"}
+  ],
+  "cond": (p, m) => true
+},
+{
+  "id": "new_signing",
+  "title": "新援到队",
+  "desc": "俱乐部签下了一名新人, 位置和你有些重叠。",
+  "weight": 2,
+  "options": [
+    {"text": "主动带他熟悉体系", "fx": {"chem": [8, 14], "comms": [1, 2], "focus": [-1, 0]}, "result": "新人很快跟上了节奏, 全队磨合加速。"},
+    {"text": "保持距离, 各练各的", "fx": {"chem": [-6, -3], "preaim": [1, 3]}, "result": "你把心思全放在自己的枪上。"}
   ],
   "cond": (p, m) => true
 }

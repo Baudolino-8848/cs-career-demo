@@ -126,7 +126,6 @@ body{
 
 /* 属性条 */
 .attr-group + .attr-group{margin-top:11px}
-.attr-group > .micro{display:block;margin-bottom:6px}
 .bar-row{display:flex;align-items:center;gap:9px;padding:3px 0}
 .bar-row .lb{
     width:49px;flex:none;font-size:11.5px;color:var(--ink-2);
@@ -199,7 +198,7 @@ body.in-game .main{max-height:calc(100vh - 40px)}
 
 /* ---------- 队伍成员 + 下一场比赛 ---------- */
 #game-panel{display:flex;flex-direction:column;gap:14px;flex:1;min-height:0}
-.top-row{display:grid;grid-template-columns:minmax(0,1fr) 232px;gap:14px}
+.top-row{display:grid;grid-template-columns:minmax(0,1fr) 272px;gap:14px}
 .team-card .card-head h3{font-size:12.5px}
 .team-card .coach{margin-left:auto;font-size:11px;color:var(--ink-2)}
 .team-card .coach b{color:var(--violet);font-weight:700}
@@ -217,14 +216,58 @@ body.in-game .main{max-height:calc(100vh - 40px)}
 
 .next-card{display:flex;flex-direction:column;gap:8px}
 .next-head{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--ink-2)}
-.next-head .days{margin-left:auto;font-size:10.5px;color:var(--warn);font-weight:700}
-.next-main{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;text-align:center;background:var(--surface-2)}
-.next-main .n-name{font-size:15px;font-weight:800;letter-spacing:-.01em}
-.next-main .n-tier,.next-main .n-date{
+.next-head .days{margin-left:auto;font-size:10.5px;color:var(--warn);font-weight:700;white-space:nowrap}
+/* 可参加赛事滑块：左右箭头夹住中间裁剪区，滑轨整体按一屏一站平移。
+   裁剪区 overflow:hidden，滑轨宽度=裁剪区宽度，所以 translateX(-100%) 恰好翻一屏。 */
+.sched-viewport{display:flex;align-items:stretch;gap:2px}
+.sched-clip{flex:1;min-width:0;overflow:hidden}
+.sched-track{display:flex;width:100%;transition:transform .26s cubic-bezier(.2,.8,.3,1);will-change:transform}
+.sched-arrow{
+    flex:none;width:22px;border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface);color:var(--ink-3);font:inherit;font-size:15px;line-height:1;cursor:pointer;
+    display:grid;place-items:center;padding:0;
+    transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.sched-arrow:hover:not(:disabled){border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-d)}
+.sched-arrow:disabled{opacity:.35;cursor:default}
+.sched-slide{flex:0 0 100%;min-width:0;overflow:hidden;display:flex}
+.sched-main{
+    flex:1;min-width:0;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;
+    text-align:center;background:var(--surface-2);
+}
+.sched-slide .n-name{font-size:15px;font-weight:800;letter-spacing:-.01em;line-height:1.3;overflow-wrap:anywhere}
+.sched-slide .n-tier,.sched-slide .n-date{
     margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
     padding:4px 6px;font-size:10px;color:var(--ink-2);background:var(--surface);
 }
-.next-main .n-tier b{color:var(--violet);font-weight:700}
+.sched-slide .n-tier b{color:var(--violet);font-weight:700}
+/* 资格状态：引用期没到就只是按当下名次的推断，到了才定死。与等级/日期同一套 pill 语言。 */
+.sched-slide .n-qual{
+    margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+    padding:4px 6px;font-size:10px;background:var(--surface);
+}
+.sched-slide .n-qual.pending{color:var(--warn);font-weight:700}
+.sched-slide .n-qual.locked{color:var(--accent-d);font-weight:700;border-color:var(--accent-line);background:var(--accent-soft)}
+/* 已打完的站：白底（与「未开赛」的浅灰底区分）+ 本站名次与重看报告的入口 */
+.sched-slide.past .sched-main{background:var(--surface)}
+.sched-slide .n-result{
+    margin-top:7px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+    padding:4px 6px;font-size:10px;background:var(--surface-2);color:var(--ink-2);
+}
+.sched-slide .n-result b{font-weight:800;color:var(--ink)}
+.sched-slide .n-result.champion b{color:var(--warn)}
+.sched-slide .n-report{
+    margin-top:7px;width:100%;border:1px solid var(--accent-line);border-radius:var(--r-sm);
+    background:var(--accent-soft);color:var(--accent-d);font:inherit;font-size:10.5px;font-weight:700;
+    padding:6px;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.sched-slide .n-report:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+/* 底部：分页圆点 + 计数 */
+.sched-foot{display:flex;align-items:center;gap:8px;justify-content:center}
+.sched-dots{display:flex;gap:5px}
+.sched-dots i{width:5px;height:5px;border-radius:50%;background:var(--ink-4);cursor:pointer;transition:background .15s ease,transform .15s ease}
+.sched-dots i.on{background:var(--accent);transform:scale(1.25)}
+.sched-count{font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 .next-idle{font-size:11.5px;color:var(--ink-3);text-align:center;padding:14px 0}
 
 /* 开局表单 */
@@ -327,6 +370,10 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-co
 /* 事件行**故意**不加规则：橙色高亮由行内标记完成——标题走 .text-yellow（= var(--warn)）、
    说明走 .text-dim，收益行由 text.js 上绿色。若将来要改成设计稿那样的琥珀色底块，
    再加 .log-item.k-event{background:var(--warn-soft);border:1px solid #FDE68A} 即可。 */
+/* 赛程播报行：青色细底 + 左侧强调线，与浅底的赛事行、橙字的事件行区分。
+   同一天可能出现多条（新增 / 失去 / 锁定各一条），各自成行、日期列重复。 */
+.log-item.k-notice{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent-line)}
+.log-item.k-notice .lines{color:var(--accent-d)}
 
 /* ---------- 事件 / 选择卡 ---------- */
 /* 开局阶段（选位置）在文档流里，跟着开局表单自然排布 */
@@ -450,7 +497,7 @@ body.in-game #choices-panel.plain{box-shadow:0 10px 30px rgba(16,24,40,.14)}
 
 /* 主体 */
 .ev-body{flex:1;min-height:0;overflow:auto;background:var(--surface)}
-.ev-grid{display:grid;grid-template-columns:266px minmax(0,1fr);gap:16px;padding:18px}
+.ev-grid{display:grid;grid-template-columns:256px minmax(0,1fr);gap:16px;padding:18px}
 .ev-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 14px;box-shadow:var(--sh-1)}
 .ev-card + .ev-card{margin-top:12px}
 .ev-card h3{margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:.02em;text-align:center}
@@ -476,6 +523,11 @@ body.in-game #choices-panel.plain{box-shadow:0 10px 30px rgba(16,24,40,.14)}
 .you-place{text-align:center;font-size:12px;color:var(--ink-2)}
 .you-place + .you-place{margin-top:3px}
 .you-place b{color:var(--warn);font-weight:700}
+/* 赛季积分后面的本站变化：括号式小尾巴，正绿负红 */
+.you-place .elo-tag{margin-left:6px;font-family:var(--mono);font-size:11.5px;font-weight:800}
+.you-place .elo-tag.up{color:var(--pos)}
+.you-place .elo-tag.dn{color:var(--neg)}
+.you-place .elo-tag.flat{color:var(--ink-3)}
 .you-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:9px 0}
 .you-num{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 4px;text-align:center}
 .you-num b{display:block;font-size:16px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
@@ -500,33 +552,71 @@ body.in-game #choices-panel.plain{box-shadow:0 10px 30px rgba(16,24,40,.14)}
 .board li .vl{font-family:var(--mono);font-weight:800;font-variant-numeric:tabular-nums}
 
 /* 详细数据 */
-.detail-grid{display:grid;grid-template-columns:266px minmax(0,1fr);gap:16px;padding:18px}
+/* 左栏 256px：比赛卡多了一行系列赛比分，留够队名不折行的宽度 */
+.detail-grid{display:grid;grid-template-columns:256px minmax(0,1fr);gap:16px;padding:18px}
 .team-card{text-align:center;margin-bottom:12px}
 .team-name{font-size:15px;font-weight:800;color:var(--accent-d);letter-spacing:-.01em}
 .team-place{font-size:11.5px;color:var(--ink-2);margin-top:5px}
 .team-place b{color:var(--warn);font-weight:700}
+/* 本站积分变化：整站累计，与逐场明细的求和一致 */
+.team-elo{
+  display:inline-flex;align-items:baseline;gap:5px;margin-top:7px;
+  font-size:11px;color:var(--ink-3);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:var(--r-pill);padding:3px 11px;
+}
+.team-elo b{font-family:var(--mono);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.team-elo.up b{color:var(--pos)}
+.team-elo.dn b{color:var(--neg)}
+.team-elo.flat b{color:var(--ink-3)}
 .match-list{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);padding:10px}
 .match{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;margin-bottom:8px;background:var(--surface);cursor:pointer;transition:border-color .15s ease,background .15s ease}
 .match:last-child{margin-bottom:0}
-.match .stage{font-size:10px;color:var(--ink-3);letter-spacing:.02em;margin-bottom:4px}
+.match .stage{font-size:10px;color:var(--ink-3);letter-spacing:.02em;margin-bottom:3px}
 .match .line{font-size:12px;line-height:1.45;color:var(--ink-2)}
 .match .line b{color:var(--ink);font-weight:700}
+/* 系列赛比分一行：左侧大号比分（我方在前），右侧胜/负 */
+.match .foot{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.match .mscore{font-family:var(--mono);font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.match .mscore.win{color:var(--pos)}
+.match .mscore.lose{color:var(--neg)}
+.match .foot .res{font-size:11px}
 .match .res{font-weight:700}
 .match .res.win{color:var(--pos)}
 .match .res.lose{color:var(--neg)}
+/* 本场积分变化：贴右，数字等宽加粗，正绿负红；以强胜弱拿得少时数值本身就小 */
+.match .elo{
+  margin-left:auto;display:inline-flex;align-items:baseline;gap:4px;
+  font-size:10px;color:var(--ink-3);letter-spacing:.02em;
+}
+.match .elo b{font-family:var(--mono);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.match .elo.up b{color:var(--pos)}
+.match .elo.dn b{color:var(--neg)}
+.match .elo.flat b{color:var(--ink-3)}
 .match.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
 .detail-main{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);overflow:hidden}
 .map-tabs{display:flex;gap:8px;padding:11px 13px;border-bottom:1px solid var(--line);background:var(--surface-2);flex-wrap:wrap}
 .map-tab{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:12px;font-weight:600;padding:6px 15px;border-radius:var(--r-sm);cursor:pointer}
 .map-tab.on{background:linear-gradient(135deg,var(--accent),var(--accent-d));border-color:transparent;color:#fff}
 .map-tab.all{min-width:96px}
+/* 单图比分板：切到某一图时顶在表格上方，是这一屏最显眼的元素 */
+.map-score{padding:15px 18px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--accent-soft),var(--surface))}
+.map-score .ms-head{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:12px}
+.map-score .ms-map{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
+.map-score .ms-line{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:14px}
+.map-score .ms-side{font-size:13.5px;font-weight:800;letter-spacing:-.01em;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-score .ms-side.right{text-align:right}
+.map-score .ms-nums{display:flex;align-items:baseline;gap:8px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.map-score .ms-nums b{font-size:37px;font-weight:800;line-height:1;color:var(--ink-4)}
+.map-score .ms-nums b.hi{color:var(--pos)}
+.map-score .ms-nums .colon{font-size:23px;font-weight:800;color:var(--ink-4)}
+.map-score .ms-ot{margin-top:11px;text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:var(--warn)}
 .stat-wrap{overflow-x:auto;padding:13px}
 .stat-table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
 .stat-table caption{text-align:left;font-size:12px;font-weight:800;color:var(--accent-d);padding:2px 4px 8px}
 .stat-table caption .tag{display:inline-block;margin-left:7px;font-size:9.5px;font-weight:700;background:var(--surface-3);color:var(--ink-2);border-radius:var(--r-pill);padding:2px 8px;vertical-align:1px}
-.stat-table th{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);text-align:right;padding:7px 10px;background:var(--surface-2);border-bottom:1px solid var(--line-strong);white-space:nowrap}
+.stat-table th{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);text-align:right;padding:6px 10px;background:var(--surface-2);border-bottom:1px solid var(--line-strong);white-space:nowrap}
 .stat-table th:first-child{text-align:left}
-.stat-table td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.stat-table td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
 .stat-table td:first-child{text-align:left;font-family:var(--sans);font-weight:600;color:var(--ink)}
 /* 队名分隔行：把同一支队伍的选手归到一段 */
 .stat-table tr.team-row td{text-align:left;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--ink-2);background:var(--surface-2);border-bottom:1px solid var(--line-strong);padding-top:8px;padding-bottom:8px}

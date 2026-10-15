@@ -395,6 +395,7 @@ function topCards() {
   const team = el("div", "card team-card");
   const head = el("div", "card-head");
   head.append(el("h3", "", "队伍成员"));
+  head.append(el("span", "tag cyan", "磨合度 128% · 强度 +1.4%"));
   const coach = el("span", "coach");
   coach.append(document.createTextNode("教练："), el("b", "", MOCK.coach));
   head.append(coach);
